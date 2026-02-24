@@ -141,14 +141,8 @@ androidComponents {
     }
 }
 
-androidComponents {
-    onVariants(selector().withBuildType("debug")) { variant ->
-        variant.outputs.forEach { output ->
-            output.versionCode.set(1)
-            output.versionName.set("test")
-        }
-    }
-}
+// Debug builds now use the actual version from git tags
+// This ensures BuildConfig.VERSION_NAME matches the real app version
 
 dependencies {
     // Core Android
