@@ -308,38 +308,57 @@ class GatewaySession(
       val authToken = if (storedToken.isNullOrBlank()) trimmedToken else storedToken
       val canFallbackToShared = !storedToken.isNullOrBlank() && trimmedToken.isNotBlank()
       
-      // Try automatic auth mode detection: token first, then password
+      // If no explicit token is configured but password is set, use password auth directly.
+      // Trying token first causes the server to close the WebSocket on rejection,
+      // making the subsequent password request time out on the already-closed connection.
+      if (trimmedToken.isEmpty() && trimmedPassword.isNotEmpty()) {
+        Log.d(TAG, "No token configured, using password auth directly")
+        val passwordPayload = buildConnectParams(identity, connectNonce, "", trimmedPassword)
+        val passwordRes = request("connect", passwordPayload, timeoutMs = 8_000)
+        Log.d(TAG, "Password auth response: ok=${passwordRes.ok} error=${passwordRes.error?.message}")
+        if (passwordRes.ok) {
+          handleConnectSuccess(passwordRes, canFallbackToShared, identityId)
+          return
+        }
+        val msg = passwordRes.error?.message ?: "connect failed"
+        Log.w(TAG, "Password auth failed: $msg (code=${passwordRes.error?.code})")
+        throw IllegalStateException(msg)
+      }
+
+      // Try automatic auth mode detection: token first, then password fallback
       val credential = trimmedToken.ifEmpty { trimmedPassword }
-      
+
       if (credential.isNotEmpty()) {
         // Try token auth first
         val tokenPayload = buildConnectParams(identity, connectNonce, authToken, null)
         val tokenRes = request("connect", tokenPayload, timeoutMs = 8_000)
-        
+
         if (tokenRes.ok) {
           handleConnectSuccess(tokenRes, canFallbackToShared, identityId)
           return
         }
-        
+
         // Token auth failed, try password auth if password is provided
         if (trimmedPassword.isNotEmpty()) {
           Log.d(TAG, "Token auth failed, trying password auth...")
           val passwordPayload = buildConnectParams(identity, connectNonce, "", trimmedPassword)
           val passwordRes = request("connect", passwordPayload, timeoutMs = 8_000)
-          
+          Log.d(TAG, "Password auth response: ok=${passwordRes.ok} error=${passwordRes.error?.message}")
+
           if (passwordRes.ok) {
             handleConnectSuccess(passwordRes, canFallbackToShared, identityId)
             return
           }
-          
+
           // Both failed
           val msg = passwordRes.error?.message ?: "connect failed"
+          Log.w(TAG, "Password auth failed: $msg (code=${passwordRes.error?.code})")
           if (canFallbackToShared) {
             deviceAuthStore.clearToken(identityId, options.role)
           }
           throw IllegalStateException(msg)
         }
-        
+
         // Token failed and no password provided
         val msg = tokenRes.error?.message ?: "connect failed"
         if (canFallbackToShared) {
