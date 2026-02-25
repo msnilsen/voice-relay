@@ -261,6 +261,7 @@
     <string name="gateway_port">Port</string>
     <string name="gateway_port_error">Invalid port</string>
     <string name="gateway_token">Token</string>
+    <string name="gateway_password">Password</string>
     <string name="gateway_use_tls">Use TLS</string>
     <string name="gateway_use_tls_desc">Use encrypted and secure connection</string>
     <string name="gateway_invalid_params">Invalid host or port</string>

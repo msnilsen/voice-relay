@@ -366,6 +366,8 @@ class NodeRuntime(context: Context) {
   val manualTls: StateFlow<Boolean> = prefs.manualTls
   val gatewayToken: StateFlow<String> = prefs.gatewayToken
   fun setGatewayToken(value: String) = prefs.setGatewayToken(value)
+  fun getGatewayPassword(): String? = prefs.loadGatewayPassword()
+  fun setGatewayPassword(value: String) = prefs.saveGatewayPassword(value)
   val lastDiscoveredStableId: StateFlow<String> = prefs.lastDiscoveredStableId
   val canvasDebugStatusEnabled: StateFlow<Boolean> = prefs.canvasDebugStatusEnabled
 
