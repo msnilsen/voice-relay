@@ -59,6 +59,7 @@ import com.openclaw.assistant.service.HotwordService
 import com.openclaw.assistant.service.NodeForegroundService
 import com.openclaw.assistant.service.OpenClawAssistantService
 import com.openclaw.assistant.ui.GatewayTrustDialog
+import com.openclaw.assistant.ui.OnboardingFlow
 import com.openclaw.assistant.speech.TTSUtils
 import com.openclaw.assistant.speech.diagnostics.DiagnosticStatus
 import com.openclaw.assistant.speech.diagnostics.VoiceDiagnostic
@@ -157,8 +158,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         setContent {
             OpenClawAssistantTheme {
-                MainScreen(
+                RootScreen(
                     settings = settings,
+                    runtime = runtime,
                     diagnostic = voiceDiagnostic,
                     missingPermissions = missingPermissions,
                     allPermissionsStatus = allPermissionsStatus,
@@ -339,6 +341,48 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     override fun onDestroy() {
         super.onDestroy()
         tts?.shutdown()
+    }
+}
+
+@Composable
+fun RootScreen(
+    settings: SettingsRepository,
+    runtime: com.openclaw.assistant.node.NodeRuntime,
+    diagnostic: VoiceDiagnostic?,
+    missingPermissions: List<PermissionInfo>,
+    allPermissionsStatus: List<PermissionStatusInfo>,
+    onOpenSettings: () -> Unit,
+    onOpenAssistantSettings: () -> Unit,
+    onRefreshDiagnostics: () -> Unit,
+    onRequestPermissions: (List<String>) -> Unit,
+    onOpenAppSettings: () -> Unit
+) {
+    var isOnboardingCompleted by remember { mutableStateOf(settings.isOnboardingCompleted) }
+
+    if (!isOnboardingCompleted) {
+        OnboardingFlow(
+            runtime = runtime,
+            onFinish = {
+                settings.isOnboardingCompleted = true
+                isOnboardingCompleted = true
+            },
+            onSkip = {
+                settings.isOnboardingCompleted = true
+                isOnboardingCompleted = true
+            }
+        )
+    } else {
+        MainScreen(
+            settings = settings,
+            diagnostic = diagnostic,
+            missingPermissions = missingPermissions,
+            allPermissionsStatus = allPermissionsStatus,
+            onOpenSettings = onOpenSettings,
+            onOpenAssistantSettings = onOpenAssistantSettings,
+            onRefreshDiagnostics = onRefreshDiagnostics,
+            onRequestPermissions = onRequestPermissions,
+            onOpenAppSettings = onOpenAppSettings
+        )
     }
 }
 

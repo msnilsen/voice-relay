@@ -371,4 +371,26 @@
     <string name="update_available">New version (%s) available</string>
     <string name="up_to_date">App is up to date</string>
     <string name="update_action">Update</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_finish">Finish</string>
+    <string name="onboarding_welcome_title">Welcome to OpenClaw</string>
+    <string name="onboarding_welcome_desc">Your personal AI assistant that can see your screen, send SMS, and help you with daily tasks.</string>
+    <string name="onboarding_gateway_title">Connect to Gateway</string>
+    <string name="onboarding_gateway_desc">Connect to your OpenClaw server to enable AI capabilities.</string>
+    <string name="onboarding_setup_code">Setup Code</string>
+    <string name="onboarding_manual_config">Manual Configuration</string>
+    <string name="onboarding_permissions_title">Grant Permissions</string>
+    <string name="onboarding_permissions_desc">OpenClaw needs these permissions to function correctly.</string>
+    <string name="onboarding_connect_title">Finalizing Setup</string>
+    <string name="onboarding_connect_desc">We are connecting to your gateway to make sure everything is ready.</string>
+    <string name="onboarding_setup_code_hint">Enter 6-digit setup code</string>
+    <string name="onboarding_setup_code_unsupported">Setup code resolution requires a discovery server. Please use Manual configuration.</string>
+    <string name="onboarding_step_welcome">Welcome</string>
+    <string name="onboarding_step_gateway">Gateway</string>
+    <string name="onboarding_step_permissions">Permissions</string>
+    <string name="onboarding_step_connect">Connect</string>
 </resources>

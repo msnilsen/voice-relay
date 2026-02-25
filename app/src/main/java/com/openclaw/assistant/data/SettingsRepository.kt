@@ -141,6 +141,11 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_IS_VERIFIED, false)
         set(value) = prefs.edit().putBoolean(KEY_IS_VERIFIED, value).apply()
 
+    // Onboarding Completed
+    var isOnboardingCompleted: Boolean
+        get() = prefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
+        set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, value).apply()
+
     // Default Agent ID
     var defaultAgentId: String
         get() = prefs.getString(KEY_DEFAULT_AGENT_ID, "main") ?: "main"
@@ -201,6 +206,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_WAKE_WORD_PRESET = "wake_word_preset"
         private const val KEY_CUSTOM_WAKE_WORD = "custom_wake_word"
         private const val KEY_IS_VERIFIED = "is_verified"
+        private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
         private const val KEY_TTS_ENABLED = "tts_enabled"
         private const val KEY_CONTINUOUS_MODE = "continuous_mode"
         private const val KEY_RESUME_LATEST_SESSION = "resume_latest_session"
