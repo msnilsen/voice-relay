@@ -1,4 +1,4 @@
-name: CI
+name: Build & Check PR
 
 on:
   pull_request:
@@ -23,12 +23,18 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate PR google-services.json
+      - name: Setup google-services.json
+        env:
+          DEBUG_GOOGLE_SERVICES_JSON: ${{ secrets.DEBUG_GOOGLE_SERVICES_JSON }}
         run: |
-          # PR CI builds use "pr" variant (applicationIdSuffix = ".test").
-          # Always generate a matching dummy google-services.json to avoid
-          # package-name mismatch with release Firebase config.
-          cat > app/google-services.json << 'EOT'
+          if [ -n "$DEBUG_GOOGLE_SERVICES_JSON" ]; then
+            # Own-repo PR: use real Firebase config so the APK works on device
+            echo "FIREBASE_ENABLED=true" >> $GITHUB_ENV
+            echo "$DEBUG_GOOGLE_SERVICES_JSON" > app/google-services.json
+          else
+            # Fork PR: use stub config; Firebase will be disabled at runtime
+            echo "FIREBASE_ENABLED=false" >> $GITHUB_ENV
+            cat > app/google-services.json << 'EOT'
           {
             "project_info": {
               "project_number": "000000000000",
@@ -38,16 +44,6 @@ jobs:
             "client": [
               {
                 "client_info": {
-                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
-                  "android_client_info": {
-                    "package_name": "com.openclaw.assistant"
-                  }
-                },
-                "api_key": [{ "current_key": "mock-api-key" }],
-                "services": { "analytics_service": { "status": 1 }, "appinvite_service": { "status": 1, "other_platform_oauth_client": [] }, "ads_service": { "status": 2 } }
-              },
-              {
-                "client_info": {
                   "mobilesdk_app_id": "1:000000000000:android:0000000000000001",
                   "android_client_info": {
                     "package_name": "com.openclaw.assistant.debug"
@@ -55,26 +51,17 @@ jobs:
                 },
                 "api_key": [{ "current_key": "mock-api-key" }],
                 "services": { "analytics_service": { "status": 1 }, "appinvite_service": { "status": 1, "other_platform_oauth_client": [] }, "ads_service": { "status": 2 } }
-              },
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:000000000000:android:0000000000000002",
-                  "android_client_info": {
-                    "package_name": "com.openclaw.assistant.test"
-                  }
-                },
-                "api_key": [{ "current_key": "mock-api-key" }],
-                "services": { "analytics_service": { "status": 1 }, "appupload_service": { "status": 1, "other_platform_oauth_client": [] }, "ads_service": { "status": 2 } }
               }
             ],
             "configuration_version": "1"
           }
           EOT
+          fi
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build PR Test APK
+      - name: Build Debug APK
         run: ./gradlew assembleDebug
 
       - name: Run Lint
@@ -83,5 +70,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-pr-test-apk
+          name: app-debug-apk
           path: app/build/outputs/apk/debug/*.apk
