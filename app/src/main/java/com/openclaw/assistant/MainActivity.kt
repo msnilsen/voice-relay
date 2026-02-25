@@ -59,6 +59,7 @@ import com.openclaw.assistant.service.HotwordService
 import com.openclaw.assistant.service.NodeForegroundService
 import com.openclaw.assistant.service.OpenClawAssistantService
 import com.openclaw.assistant.ui.GatewayTrustDialog
+import com.openclaw.assistant.ui.PostOnboardingTabs
 import com.openclaw.assistant.speech.TTSUtils
 import com.openclaw.assistant.speech.diagnostics.DiagnosticStatus
 import com.openclaw.assistant.speech.diagnostics.VoiceDiagnostic
@@ -157,15 +158,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         setContent {
             OpenClawAssistantTheme {
-                MainScreen(
+                PostOnboardingTabs(
                     settings = settings,
                     diagnostic = voiceDiagnostic,
                     missingPermissions = missingPermissions,
                     allPermissionsStatus = allPermissionsStatus,
-                    onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
-                    onOpenAssistantSettings = { openAssistantSettings() },
                     onRefreshDiagnostics = {
-                        initializeTTS() // Re-init on manual refresh
+                        initializeTTS()
                         refreshAllPermissionsStatus()
                     },
                     onRequestPermissions = { permissions ->
@@ -176,7 +175,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                             permissionLauncher.launch(ungranted.toTypedArray())
                         }
                     },
-                    onOpenAppSettings = { openAppSettings() }
+                    onOpenAppSettings = { openAppSettings() },
+                    onOpenSettings = {
+                        // Settings tab is handled internally by PostOnboardingTabs
+                    }
                 )
             }
         }
