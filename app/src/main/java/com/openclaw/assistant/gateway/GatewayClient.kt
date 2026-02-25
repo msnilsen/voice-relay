@@ -105,7 +105,9 @@ class GatewayClient(context: android.content.Context) {
     private var desiredHost: String? = null
     private var desiredPort: Int = 18789
     private var desiredToken: String? = null
+    private var desiredPassword: String? = null
     private var desiredUseTls: Boolean = false
+    private var isPasswordAuth: Boolean = false
 
     private var runLoopJob: Job? = null
     private var currentSocket: WebSocket? = null
@@ -123,13 +125,19 @@ class GatewayClient(context: android.content.Context) {
 
     // --- Public API ---
 
-    fun connect(host: String, port: Int = 18789, token: String? = null, useTls: Boolean = false) {
-        val changed = desiredHost != host || desiredPort != port || desiredToken != token || desiredUseTls != useTls
+    /**
+     * Connect to gateway with automatic auth mode detection.
+     * Tries token auth first, falls back to password auth if token fails.
+     */
+    fun connect(host: String, port: Int = 18789, credential: String? = null, useTls: Boolean = false) {
+        val changed = desiredHost != host || desiredPort != port || desiredToken != credential || desiredUseTls != useTls
 
         desiredHost = host
         desiredPort = port
-        desiredToken = token
+        desiredToken = credential
+        desiredPassword = credential
         desiredUseTls = useTls
+        isPasswordAuth = false
 
         if (runLoopJob == null || changed) {
             scope.launch {
@@ -286,7 +294,7 @@ class GatewayClient(context: android.content.Context) {
         }
     }
 
-    private suspend fun connectOnce(host: String, port: Int, token: String?, useTls: Boolean) {
+    private suspend fun connectOnce(host: String, port: Int, credential: String?, useTls: Boolean) {
         isClosed.set(false)
         connectDeferred = CompletableDeferred()
         closeDeferred = CompletableDeferred()
@@ -305,8 +313,11 @@ class GatewayClient(context: android.content.Context) {
             throw e
         }
 
-        // Send connect RPC
-        sendConnectRpc(token)
+        // Try to connect with automatic auth mode detection
+        val connected = tryConnectWithAuth(credential, useTls)
+        if (!connected) {
+            throw IllegalStateException("Authentication failed")
+        }
 
         _connectionState.value = ConnectionState.CONNECTED
         Log.e(TAG, "Connected to $url, mainSessionKey=$mainSessionKey")
@@ -327,7 +338,46 @@ class GatewayClient(context: android.content.Context) {
         mainSessionKey = null
     }
 
-    private suspend fun sendConnectRpc(token: String?) {
+    /**
+     * Try to connect with automatic auth mode detection.
+     * First tries token auth, then falls back to password auth.
+     */
+    private suspend fun tryConnectWithAuth(credential: String?, useTls: Boolean): Boolean {
+        if (credential.isNullOrBlank()) {
+            // No credential, try connect without auth
+            return try {
+                sendConnectRpc(null, false)
+                true
+            } catch (e: Exception) {
+                Log.w(TAG, "Connect without auth failed: ${e.message}")
+                false
+            }
+        }
+
+        // Try token auth first
+        try {
+            Log.d(TAG, "Trying token auth...")
+            sendConnectRpc(credential, false)
+            isPasswordAuth = false
+            Log.d(TAG, "Token auth succeeded")
+            return true
+        } catch (e: Exception) {
+            Log.w(TAG, "Token auth failed: ${e.message}, trying password auth...")
+        }
+
+        // Fall back to password auth
+        try {
+            sendConnectRpc(credential, true)
+            isPasswordAuth = true
+            Log.d(TAG, "Password auth succeeded")
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Password auth also failed: ${e.message}")
+            return false
+        }
+    }
+
+    private suspend fun sendConnectRpc(credential: String?, isPassword: Boolean) {
         // Wait briefly for connect.challenge nonce (loopback skips this)
         val nonce = try {
             withTimeout(2_000) { connectNonceDeferred?.await() }
@@ -346,11 +396,21 @@ class GatewayClient(context: android.content.Context) {
             addProperty("minProtocol", GATEWAY_PROTOCOL_VERSION)
             addProperty("maxProtocol", GATEWAY_PROTOCOL_VERSION)
             add("client", clientObj)
-            if (!token.isNullOrBlank()) {
-                val authObj = JsonObject().apply {
-                    addProperty("token", token)
+            
+            if (!credential.isNullOrBlank()) {
+                if (isPassword) {
+                    // Password auth: send as auth.password
+                    val authObj = JsonObject().apply {
+                        addProperty("password", credential)
+                    }
+                    add("auth", authObj)
+                } else {
+                    // Token auth: send as auth.token
+                    val authObj = JsonObject().apply {
+                        addProperty("token", credential)
+                    }
+                    add("auth", authObj)
                 }
-                add("auth", authObj)
             }
             
             // Add device auth if available
