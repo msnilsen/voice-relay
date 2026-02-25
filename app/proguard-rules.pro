@@ -2,6 +2,22 @@
 -keepattributes *Annotation*
 -keepattributes SourceFile,LineNumberTable
 
+# Firebase
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+
+# Kotlin serialization
+-keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature, Exceptions, SourceFile, LineNumberTable
+-keep class kotlin.** { *; }
+-keep class kotlinx.** { *; }
+-keepclassmembers class kotlin.Metadata { public <methods>; }
+
+# Kotlinx Serialization
+-keepclassmembers class * {
+    @kotlinx.serialization.Serializable <fields>;
+}
+-keep class * implements kotlinx.serialization.KSerializer { *; }
+
 # OkHttp
 -dontwarn okhttp3.**
 -dontwarn okio.**
@@ -16,12 +32,12 @@
 # causing Gson deserialization to fail silently and return null.
 -keep class com.openclaw.assistant.utils.GithubRelease { *; }
 
-
 # Google Error Prone Annotations
 -dontwarn com.google.errorprone.annotations.**
 
 # Tink (Security Crypto)
 -dontwarn com.google.crypto.tink.**
+-keep class com.google.crypto.tink.** { *; }
 
 # Vosk speech recognition
 -keep class org.vosk.** { *; }
