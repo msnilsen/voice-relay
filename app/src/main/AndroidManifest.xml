@@ -76,6 +76,12 @@
         android:theme="@style/Theme.OpenClawAssistant"
         tools:targetApi="34">
 
+        <!-- Disable Firebase for debug/CI builds -->
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            tools:node="remove" />
+
         <!-- Main Activity -->
         <activity
             android:name="com.openclaw.assistant.MainActivity"
