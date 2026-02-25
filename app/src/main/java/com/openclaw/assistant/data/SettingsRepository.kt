@@ -136,6 +136,31 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_THINKING_SOUND_ENABLED, true)
         set(value) = prefs.edit().putBoolean(KEY_THINKING_SOUND_ENABLED, value).apply()
 
+    // Talk Mode enabled
+    var talkModeEnabled: Boolean
+        get() = prefs.getBoolean(KEY_TALK_MODE_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_TALK_MODE_ENABLED, value).apply()
+
+    // ElevenLabs Enabled
+    var elevenLabsEnabled: Boolean
+        get() = prefs.getBoolean(KEY_ELEVENLABS_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_ELEVENLABS_ENABLED, value).apply()
+
+    // ElevenLabs API Key
+    var elevenLabsApiKey: String
+        get() = prefs.getString(KEY_ELEVENLABS_API_KEY, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_ELEVENLABS_API_KEY, value).apply()
+
+    // ElevenLabs Voice ID
+    var elevenLabsVoiceId: String
+        get() = prefs.getString(KEY_ELEVENLABS_VOICE_ID, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_ELEVENLABS_VOICE_ID, value).apply()
+
+    // ElevenLabs Model ID
+    var elevenLabsModelId: String
+        get() = prefs.getString(KEY_ELEVENLABS_MODEL_ID, "eleven_monolingual_v1") ?: "eleven_monolingual_v1"
+        set(value) = prefs.edit().putString(KEY_ELEVENLABS_MODEL_ID, value).apply()
+
     // Connection Verified
     var isVerified: Boolean
         get() = prefs.getBoolean(KEY_IS_VERIFIED, false)
@@ -213,6 +238,11 @@ class SettingsRepository(context: Context) {
         private const val KEY_SPEECH_SILENCE_TIMEOUT = "speech_silence_timeout"
         private const val KEY_THINKING_SOUND_ENABLED = "thinking_sound_enabled"
         private const val KEY_SPEECH_LANGUAGE = "speech_language"
+        private const val KEY_TALK_MODE_ENABLED = "talk_mode_enabled"
+        private const val KEY_ELEVENLABS_ENABLED = "elevenlabs_enabled"
+        private const val KEY_ELEVENLABS_API_KEY = "elevenlabs_api_key"
+        private const val KEY_ELEVENLABS_VOICE_ID = "elevenlabs_voice_id"
+        private const val KEY_ELEVENLABS_MODEL_ID = "elevenlabs_model_id"
 
         // Wake word presets
         const val WAKE_WORD_OPEN_CLAW = "open_claw"

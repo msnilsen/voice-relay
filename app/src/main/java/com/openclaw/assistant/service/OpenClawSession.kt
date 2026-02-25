@@ -44,6 +44,10 @@ import com.openclaw.assistant.speech.SpeechRecognizerManager
 import com.openclaw.assistant.speech.TTSManager
 import com.openclaw.assistant.speech.SpeechResult
 import com.openclaw.assistant.speech.TTSUtils
+import com.openclaw.assistant.voice.TalkModeManager
+import com.openclaw.assistant.voice.TalkModeState
+import com.openclaw.assistant.ui.TalkOrbOverlay
+import com.openclaw.assistant.ui.TalkOrbState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -68,8 +72,10 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
 
     private val settings = SettingsRepository.getInstance(context)
     private val apiClient = OpenClawClient()
+    private val nodeRuntime by lazy { (context.applicationContext as com.openclaw.assistant.OpenClawApplication).nodeRuntime }
     private lateinit var speechManager: SpeechRecognizerManager
     private lateinit var ttsManager: TTSManager
+    private var talkModeManager: TalkModeManager? = null
     
     // Repository
     private val chatRepository = com.openclaw.assistant.data.repository.ChatRepository.getInstance(context)
@@ -110,6 +116,11 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
 
         speechManager = SpeechRecognizerManager(context)
         ttsManager = TTSManager(context)
+        if (settings.talkModeEnabled) {
+            talkModeManager = TalkModeManager(context, scope) { text ->
+                sendToOpenClaw(text)
+            }
+        }
         Log.e(TAG, "Session onCreate completed")
     }
 
@@ -144,7 +155,12 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
             }
             
             setContent {
+                val talkState by talkModeManager?.state?.collectAsState() ?: remember { mutableStateOf(null) }
+                val talkAudioLevel by talkModeManager?.audioLevel?.collectAsState() ?: remember { mutableStateOf(0f) }
+
                 AssistantUI(
+                    talkState = talkState,
+                    talkAudioLevel = talkAudioLevel,
                     state = currentState.value,
                     displayText = displayText.value,
                     userQuery = userQuery.value,
@@ -166,6 +182,11 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         // Recreate scope if it was cancelled by a previous onHide()
         if (!scope.isActive) {
             scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+            if (settings.talkModeEnabled) {
+                talkModeManager = TalkModeManager(context, scope) { text ->
+                    sendToOpenClaw(text)
+                }
+            }
         }
 
         // Ensure any existing SpeechRecognizerManager is cleaned up before creating a new one
@@ -188,6 +209,24 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
 
         // PAUSE Hotword Service to prevent microphone conflict
         sendPauseBroadcast()
+
+        // Observe streaming text for Talk Mode
+        if (settings.talkModeEnabled && settings.useNodeChat) {
+            scope.launch {
+                nodeRuntime.chatStreamingAssistantText.collect { text ->
+                    if (text != null) {
+                        talkModeManager?.handleAssistantDelta(text, false)
+                    }
+                }
+            }
+            scope.launch {
+                nodeRuntime.pendingRunCount.collect { count ->
+                    if (count == 0) {
+                        talkModeManager?.handleAssistantDelta("", true)
+                    }
+                }
+            }
+        }
         
         // SESSION MANAGEMENT
         scope.launch {
@@ -217,8 +256,15 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
             return
         }
 
-        // Start speech recognition
-        startListening()
+        // Start speech recognition or handle immediate command
+        val command = args?.getString("command")
+        if (!command.isNullOrEmpty()) {
+            sendToOpenClaw(command)
+        } else if (settings.talkModeEnabled) {
+            talkModeManager?.start()
+        } else {
+            startListening()
+        }
     }
     
     override fun onHide() {
@@ -229,6 +275,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         // Clean up audio resources
         abandonAudioFocus()
         SessionForegroundService.stop(context)
+        talkModeManager?.stop()
         scope.cancel()
         speechManager.destroy()
         ttsManager.stop()
@@ -390,7 +437,9 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     }
 
     private fun sendToOpenClaw(message: String) {
-        currentState.value = AssistantState.THINKING
+        if (!settings.talkModeEnabled) {
+            currentState.value = AssistantState.THINKING
+        }
         toneGenerator.startTone(android.media.ToneGenerator.TONE_PROP_ACK, 150)
         startThinkingSound()
         displayText.value = ""
@@ -401,7 +450,11 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                 chatRepository.addMessage(sessionId, message, isUser = true)
             }
 
-            sendViaHttp(message)
+            if (settings.useNodeChat) {
+                nodeRuntime.sendChat(message, "low", emptyList())
+            } else {
+                sendViaHttp(message)
+            }
         }
     }
 
@@ -534,6 +587,8 @@ enum class AssistantState {
  */
 @Composable
 fun AssistantUI(
+    talkState: TalkModeState? = null,
+    talkAudioLevel: Float = 0f,
     state: AssistantState,
     displayText: String,
     userQuery: String,
@@ -608,38 +663,52 @@ fun AssistantUI(
             // When speaking loudly, the voice reaction should dominate.
             val finalScale = if (state == AssistantState.LISTENING) maxOf(baseScale, animatedLevelScale) else 1f
 
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .graphicsLayer {
-                        scaleX = finalScale
-                        scaleY = finalScale
-                    }
-                    .clip(CircleShape)
-                    .background(
-                        when (state) {
-                            AssistantState.LISTENING -> Color(0xFF4CAF50)
-                            AssistantState.SPEAKING -> Color(0xFF2196F3)
-                            AssistantState.THINKING, AssistantState.PROCESSING -> Color(0xFFFFC107)
-                            AssistantState.ERROR -> Color(0xFFF44336)
-                            else -> Color(0xFF9E9E9E)
-                        }
-                    )
-                    .then(
-                        if (state == AssistantState.SPEAKING) {
-                            Modifier.clickable { onInterrupt() }
-                        } else {
-                            Modifier
-                        }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (state == AssistantState.ERROR) Icons.Default.MicOff else Icons.Default.Mic,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(40.dp)
+            if (talkState != null) {
+                TalkOrbOverlay(
+                    state = when (talkState) {
+                        TalkModeState.LISTENING -> TalkOrbState.LISTENING
+                        TalkModeState.THINKING -> TalkOrbState.THINKING
+                        TalkModeState.SPEAKING -> TalkOrbState.SPEAKING
+                        TalkModeState.ERROR -> TalkOrbState.ERROR
+                        else -> TalkOrbState.IDLE
+                    },
+                    audioLevel = talkAudioLevel,
+                    modifier = Modifier.size(200.dp)
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .graphicsLayer {
+                            scaleX = finalScale
+                            scaleY = finalScale
+                        }
+                        .clip(CircleShape)
+                        .background(
+                            when (state) {
+                                AssistantState.LISTENING -> Color(0xFF4CAF50)
+                                AssistantState.SPEAKING -> Color(0xFF2196F3)
+                                AssistantState.THINKING, AssistantState.PROCESSING -> Color(0xFFFFC107)
+                                AssistantState.ERROR -> Color(0xFFF44336)
+                                else -> Color(0xFF9E9E9E)
+                            }
+                        )
+                        .then(
+                            if (state == AssistantState.SPEAKING) {
+                                Modifier.clickable { onInterrupt() }
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (state == AssistantState.ERROR) Icons.Default.MicOff else Icons.Default.Mic,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

@@ -42,7 +42,8 @@ class OpenClawAssistantService : VoiceInteractionService() {
         override fun onReceive(context: Context?, intent: Intent?) {
             Log.e(TAG, "Assistant trigger receiver triggered: ${intent?.action}")
             if (intent?.action == ACTION_SHOW_ASSISTANT) {
-                triggerShowSession()
+                val command = intent.getStringExtra("command")
+                triggerShowSession(command)
             }
         }
     }
@@ -64,7 +65,8 @@ class OpenClawAssistantService : VoiceInteractionService() {
         val action = intent.action
         Log.e(TAG, "onStartCommand received: $action")
         if (action == ACTION_SHOW_ASSISTANT) {
-            triggerShowSession()
+            val command = intent.getStringExtra("command")
+            triggerShowSession(command)
         }
         return START_STICKY
     }
@@ -74,14 +76,20 @@ class OpenClawAssistantService : VoiceInteractionService() {
         return super.onBind(intent)
     }
 
-    private fun triggerShowSession() {
+    private var pendingArgs: Bundle? = null
+
+    private fun triggerShowSession(command: String? = null) {
         val compName = ComponentName(this, OpenClawAssistantService::class.java)
         val isActive = isActiveService(this, compName)
-        Log.e(TAG, "triggerShowSession: isServiceReady=$isServiceReady, isActiveService=$isActive")
+        Log.e(TAG, "triggerShowSession: isServiceReady=$isServiceReady, isActiveService=$isActive, command=$command")
         
+        val args = Bundle()
+        if (command != null) {
+            args.putString("command", command)
+        }
+
         if (isServiceReady) {
             try {
-                val args = Bundle()
                 showSession(args, VoiceInteractionSession.SHOW_WITH_ASSIST)
                 Log.e(TAG, "showSession() called immediately")
             } catch (e: Exception) {
@@ -91,6 +99,7 @@ class OpenClawAssistantService : VoiceInteractionService() {
         } else {
             Log.e(TAG, "Service not ready. Queuing showSession request.")
             pendingShowSession = true
+            pendingArgs = args
             handler.removeCallbacks(pendingSessionTimeoutRunnable)
             handler.postDelayed(pendingSessionTimeoutRunnable, PENDING_SESSION_TIMEOUT_MS)
         }
@@ -104,8 +113,9 @@ class OpenClawAssistantService : VoiceInteractionService() {
             pendingShowSession = false
             handler.removeCallbacks(pendingSessionTimeoutRunnable)
             try {
-                val args = Bundle()
+                val args = pendingArgs ?: Bundle()
                 showSession(args, VoiceInteractionSession.SHOW_WITH_ASSIST)
+                pendingArgs = null
                 Log.e(TAG, "showSession() called from onReady (pending)")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to call pending showSession", e)

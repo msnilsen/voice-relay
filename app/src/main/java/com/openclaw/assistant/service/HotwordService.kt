@@ -22,6 +22,7 @@ import com.openclaw.assistant.MainActivity
 import com.openclaw.assistant.R
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.openclaw.assistant.data.SettingsRepository
+import com.openclaw.assistant.voice.VoiceWakeCommandExtractor
 import kotlinx.coroutines.*
 import org.vosk.Model
 import org.vosk.Recognizer
@@ -524,7 +525,8 @@ class HotwordService : Service(), VoskRecognitionListener {
 
                 if (detected) {
                     Log.e(TAG, "Hotword detected! Text: $text")
-                    onHotwordDetected()
+                    val command = VoiceWakeCommandExtractor.extract(text, wakeWords)
+                    onHotwordDetected(command)
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to parse Vosk result: $it", e)
@@ -553,13 +555,13 @@ class HotwordService : Service(), VoskRecognitionListener {
         }
     }
 
-    private fun onHotwordDetected() {
+    private fun onHotwordDetected(command: String = "") {
         if (isListeningForCommand || isSessionActive) return
         isListeningForCommand = true
         isSessionActive = true
         startWatchdog()
 
-        Log.d(TAG, "Hotword Detected! Triggering Assistant Overlay...")
+        Log.d(TAG, "Hotword Detected! Command: $command Triggering Assistant Overlay...")
 
         // Stop service on Main thread to avoid race conditions
         scope.launch {
@@ -578,6 +580,9 @@ class HotwordService : Service(), VoskRecognitionListener {
 
             val intent = Intent(this@HotwordService, OpenClawAssistantService::class.java).apply {
                 action = OpenClawAssistantService.ACTION_SHOW_ASSISTANT
+                if (command.isNotEmpty()) {
+                    putExtra("command", command)
+                }
             }
             startService(intent)
             Log.e(TAG, "startService ACTION_SHOW_ASSISTANT called")

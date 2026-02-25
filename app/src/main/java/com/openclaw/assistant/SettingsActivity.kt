@@ -86,6 +86,11 @@ fun SettingsScreen(
     var speechSilenceTimeout by rememberSaveable { mutableStateOf(settings.speechSilenceTimeout.toFloat().coerceIn(5000f, 30000f)) }
     var speechLanguage by rememberSaveable { mutableStateOf(settings.speechLanguage) }
     var thinkingSoundEnabled by rememberSaveable { mutableStateOf(settings.thinkingSoundEnabled) }
+    var talkModeEnabled by rememberSaveable { mutableStateOf(settings.talkModeEnabled) }
+    var elevenLabsEnabled by rememberSaveable { mutableStateOf(settings.elevenLabsEnabled) }
+    var elevenLabsApiKey by rememberSaveable { mutableStateOf(settings.elevenLabsApiKey) }
+    var elevenLabsVoiceId by rememberSaveable { mutableStateOf(settings.elevenLabsVoiceId) }
+    var elevenLabsModelId by rememberSaveable { mutableStateOf(settings.elevenLabsModelId) }
 
     var showAuthToken by rememberSaveable { mutableStateOf(false) }
     var showWakeWordMenu by rememberSaveable { mutableStateOf(false) }
@@ -237,6 +242,11 @@ fun SettingsScreen(
                             settings.speechSilenceTimeout = speechSilenceTimeout.toLong()
                             settings.speechLanguage = speechLanguage
                             settings.thinkingSoundEnabled = thinkingSoundEnabled
+                            settings.talkModeEnabled = talkModeEnabled
+                            settings.elevenLabsEnabled = elevenLabsEnabled
+                            settings.elevenLabsApiKey = elevenLabsApiKey
+                            settings.elevenLabsVoiceId = elevenLabsVoiceId
+                            settings.elevenLabsModelId = elevenLabsModelId
 
                             // Stop/Restart services
                             HotwordService.stop(context)
@@ -811,6 +821,63 @@ fun SettingsScreen(
                             Text(stringResource(R.string.thinking_sound_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         }
                         Switch(checked = thinkingSoundEnabled, onCheckedChange = { thinkingSoundEnabled = it })
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
+
+                    // Talk Mode
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.talk_mode_label), style = MaterialTheme.typography.bodyLarge)
+                            Text(stringResource(R.string.talk_mode_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        }
+                        Switch(checked = talkModeEnabled, onCheckedChange = { talkModeEnabled = it })
+                    }
+
+                    if (talkModeEnabled) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
+
+                        // ElevenLabs Section
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(stringResource(R.string.elevenlabs_enabled_label), style = MaterialTheme.typography.bodyLarge)
+                            Switch(checked = elevenLabsEnabled, onCheckedChange = { elevenLabsEnabled = it })
+                        }
+
+                        if (elevenLabsEnabled) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = elevenLabsApiKey,
+                                onValueChange = { elevenLabsApiKey = it },
+                                label = { Text(stringResource(R.string.elevenlabs_api_key_label)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = elevenLabsVoiceId,
+                                onValueChange = { elevenLabsVoiceId = it },
+                                label = { Text(stringResource(R.string.elevenlabs_voice_id_label)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = elevenLabsModelId,
+                                onValueChange = { elevenLabsModelId = it },
+                                label = { Text(stringResource(R.string.elevenlabs_model_id_label)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                        }
                     }
                 }
             }

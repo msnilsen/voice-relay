@@ -121,6 +121,12 @@
     <string name="speech_language_loading">Loading languages…</string>
     <string name="thinking_sound">Thinking Sound</string>
     <string name="thinking_sound_desc">Play sound while AI is thinking</string>
+    <string name="talk_mode_label">Voice Talk Mode</string>
+    <string name="talk_mode_desc">Full-duplex conversation with streaming voice</string>
+    <string name="elevenlabs_enabled_label">Use ElevenLabs</string>
+    <string name="elevenlabs_api_key_label">ElevenLabs API Key</string>
+    <string name="elevenlabs_voice_id_label">ElevenLabs Voice ID</string>
+    <string name="elevenlabs_model_id_label">ElevenLabs Model ID</string>
     <string name="activation_phrase">Activation Phrase</string>
     <string name="custom_wake_word">Custom Wake Word</string>
     <string name="custom_wake_word_hint">e.g., hey buddy</string>
