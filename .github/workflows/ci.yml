@@ -30,7 +30,20 @@ jobs:
           if [ -n "$DEBUG_GOOGLE_SERVICES_JSON" ]; then
             # Own-repo PR: use real Firebase config so the APK works on device
             echo "FIREBASE_ENABLED=true" >> $GITHUB_ENV
-            python3 -c "import os; open('app/google-services.json', 'w').write(os.environ['DEBUG_GOOGLE_SERVICES_JSON'])"
+            python3 - << 'PYEOF'
+          import os, json, sys
+          content = os.environ['DEBUG_GOOGLE_SERVICES_JSON']
+          try:
+              data = json.loads(content)
+              with open('app/google-services.json', 'w') as f:
+                  json.dump(data, f, indent=2)
+              print('google-services.json written successfully')
+          except json.JSONDecodeError as e:
+              print(f'JSON parse error at pos {e.pos}: {e.msg}', file=sys.stderr)
+              pos = e.pos
+              print(f'Context: {repr(content[max(0,pos-30):pos+30])}', file=sys.stderr)
+              sys.exit(1)
+          PYEOF
           else
             # Fork PR: use stub config; Firebase will be disabled at runtime
             echo "FIREBASE_ENABLED=false" >> $GITHUB_ENV
