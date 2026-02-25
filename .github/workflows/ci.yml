@@ -30,7 +30,7 @@ jobs:
           if [ -n "$DEBUG_GOOGLE_SERVICES_JSON" ]; then
             # Own-repo PR: use real Firebase config so the APK works on device
             echo "FIREBASE_ENABLED=true" >> $GITHUB_ENV
-            echo "$DEBUG_GOOGLE_SERVICES_JSON" > app/google-services.json
+            printf '%s' "$DEBUG_GOOGLE_SERVICES_JSON" > app/google-services.json
           else
             # Fork PR: use stub config; Firebase will be disabled at runtime
             echo "FIREBASE_ENABLED=false" >> $GITHUB_ENV
