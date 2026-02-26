@@ -175,19 +175,6 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
             
             val synthesizer = this@VoiceVoxProvider.synthesizer ?: return@withContext false
             
-            // Debug: Log available styles in synthesizer
-            try {
-                val metas = synthesizer.metas()
-                Log.d(TAG, "Available styles in synthesizer:")
-                metas.forEach { charMeta ->
-                    charMeta.styles.forEach { style ->
-                        Log.d(TAG, "  Style id=${style.id}, name=${style.name}")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Could not get metas: ${e.message}")
-            }
-            
             // Get audio query and adjust speed
             val audioQuery = synthesizer.createAudioQuery(text, styleId)
             audioQuery.speedScale = settings.ttsSpeed.toDouble()

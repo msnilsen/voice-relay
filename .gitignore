@@ -6,3 +6,6 @@ build/
 
 *.keystore
 **/google-services.json
+
+# VOICEVOX model files (large binary, downloaded at runtime)
+*.vvm

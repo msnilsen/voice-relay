@@ -169,7 +169,7 @@ class OpenAIProvider(private val context: Context) : TTSProvider {
         emit(TTSState.Preparing)
         
         if (!isConfigured()) {
-            emit(TTSState.Error(getConfigurationError() ?: "Not configured"))
+            emit(TTSState.Error(getConfigurationError() ?: context.getString(R.string.tts_error_not_initialized)))
             return@flow
         }
         
