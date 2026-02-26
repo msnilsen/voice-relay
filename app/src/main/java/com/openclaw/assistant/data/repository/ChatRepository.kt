@@ -38,10 +38,6 @@ class ChatRepository private constructor(context: Context) {
         chatDao.deleteSession(sessionId)
     }
 
-    suspend fun renameSession(sessionId: String, newTitle: String) {
-        chatDao.updateSessionTitle(sessionId, newTitle.trim())
-    }
-
     suspend fun getLatestSession(): SessionEntity? {
         return chatDao.getLatestSession()
     }

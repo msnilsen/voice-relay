@@ -10,7 +10,6 @@ import androidx.lifecycle.viewModelScope
 import com.openclaw.assistant.OpenClawApplication
 import com.openclaw.assistant.api.OpenClawClient
 import com.openclaw.assistant.data.SettingsRepository
-import com.openclaw.assistant.chat.ChatMarkdownPreprocessor
 import com.openclaw.assistant.gateway.AgentInfo
 import com.openclaw.assistant.speech.SpeechRecognizerManager
 import com.openclaw.assistant.speech.SpeechResult
@@ -133,11 +132,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             viewModelScope.launch {
                 nodeRuntime.chatSessionKey.collect { key ->
                     _currentSessionId.value = key
-                    // Extract agentId from session key format: "agent:<agentId>:<sessionName>"
-                    val agentId = if (key.startsWith("agent:")) {
-                        key.removePrefix("agent:").substringBefore(":")
-                    } else null
-                    _uiState.update { it.copy(selectedAgentId = agentId) }
                 }
             }
             viewModelScope.launch {
@@ -279,25 +273,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // Initialize default agent from settings (HTTP mode only; in Gateway mode,
-        // the agent is resolved from the session key in chatSessionKey.collect above)
+        // Initialize default agent from settings
         val savedAgentId = settings.defaultAgentId
         if (savedAgentId.isNotBlank() && savedAgentId != "main") {
-            if (useNodeChat) {
-                _uiState.update { it.copy(defaultAgentId = savedAgentId) }
-            } else {
-                _uiState.update { it.copy(defaultAgentId = savedAgentId, selectedAgentId = savedAgentId) }
-            }
+            _uiState.update { it.copy(defaultAgentId = savedAgentId, selectedAgentId = savedAgentId) }
         }
 
     }
 
     fun createNewSession() {
         if (useNodeChat) {
-            val agentId = _uiState.value.selectedAgentId
-            val ts = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(java.util.Date())
-            val key = if (!agentId.isNullOrBlank()) "agent:$agentId:chat-$ts" else "chat-$ts"
-            Log.d("AgentDbg", "createNewSession: selectedAgentId=$agentId key=$key")
+            val key = "chat-${java.text.SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(java.util.Date())}"
             nodeRuntime.switchChatSession(key)
             nodeRuntime.loadChat(key)
             nodeRuntime.refreshChatSessions()
@@ -331,7 +317,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             if (!initialTitle.isNullOrBlank()) {
                 _initialSessionTitle.value = initialTitle
             }
-            nodeRuntime.switchChatSession(sessionId)
             nodeRuntime.loadChat(sessionId)
             // After bootstrap (chat.history), re-apply the session label.
             // The gateway creates new sessions with the device name as default label,
@@ -414,15 +399,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setAgent(agentId: String?) {
-        Log.d("AgentDbg", "setAgent: agentId=$agentId useNodeChat=$useNodeChat")
         _uiState.update { it.copy(selectedAgentId = agentId) }
-        if (agentId.isNullOrBlank()) return
-        if (useNodeChat) {
-            // Gateway mode: agent is fixed per session key, do not switch sessions.
-            // Agent selection is only available at session creation time.
-            return
-        }
-        // HTTP mode: agentId is sent via x-openclaw-agent-id header in sendViaHttp
     }
 
     private fun getEffectiveAgentId(): String? {
@@ -879,12 +856,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun com.openclaw.assistant.chat.ChatMessage.toUiChatMessage(): ChatMessage {
-        val mergedText = content.joinToString("\n") { it.text ?: "" }.trim().ifBlank { "(thinking)" }
-        val preprocessed = ChatMarkdownPreprocessor.preprocess(mergedText)
+        val mergedText = content.joinToString("\n") { it.text ?: "" }.trim().ifBlank { "(no text)" }
         val isUserMessage = role.equals("user", ignoreCase = true)
         return ChatMessage(
             id = id,
-            text = preprocessed,
+            text = mergedText,
             isUser = isUserMessage,
             timestamp = timestampMs ?: System.currentTimeMillis()
         )

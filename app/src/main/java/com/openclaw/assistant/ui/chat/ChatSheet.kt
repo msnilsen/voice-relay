@@ -62,7 +62,7 @@ fun ChatSheet(
                 chatViewModel.selectSession(session.id)
                 showChat = true
             },
-            onCreateSession = { name, isGateway ->
+            onCreateSession = { name, isGateway, agentId ->
                 sessionListViewModel.setUseNodeChat(isGateway)
                 sessionListViewModel.createSession(name, isGateway) { sessionId, _ ->
                     chatViewModel.selectSession(sessionId)

@@ -25,7 +25,6 @@ class ConnectionManager(
   private val smsAvailable: () -> Boolean,
   private val hasRecordAudioPermission: () -> Boolean,
   private val manualTls: () -> Boolean,
-  private val deviceId: () -> String?,
 ) {
   companion object {
     internal fun resolveTlsParamsForEndpoint(
@@ -148,7 +147,7 @@ class ConnectionManager(
   fun buildClientInfo(clientId: String, clientMode: String): GatewayClientInfo {
     return GatewayClientInfo(
       id = clientId,
-      displayName = deviceId() ?: prefs.displayName.value,
+      displayName = prefs.displayName.value,
       version = resolvedVersionName(),
       platform = "android",
       mode = clientMode,
@@ -176,7 +175,7 @@ class ConnectionManager(
   fun buildOperatorConnectOptions(): GatewayConnectOptions {
     return GatewayConnectOptions(
       role = "operator",
-      scopes = listOf("operator.read", "operator.write", "operator.talk.secrets", "operator.admin"),
+      scopes = listOf("operator.read", "operator.write", "operator.talk.secrets"),
       caps = emptyList(),
       commands = emptyList(),
       permissions = emptyMap(),

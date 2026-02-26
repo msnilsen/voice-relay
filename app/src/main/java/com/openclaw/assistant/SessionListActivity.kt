@@ -25,11 +25,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -58,7 +55,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.openclaw.assistant.data.local.entity.SessionEntity
-import com.openclaw.assistant.gateway.AgentInfo
 import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
 
 class SessionListActivity : ComponentActivity() {
@@ -70,15 +66,10 @@ class SessionListActivity : ComponentActivity() {
         setContent {
             OpenClawAssistantTheme {
                 val sessions by viewModel.allSessions.collectAsState()
-                val agentListResult by viewModel.agentList.collectAsState()
-                val agents = agentListResult?.agents ?: emptyList()
-                val defaultAgentId = agentListResult?.defaultId ?: "main"
                 SessionListScreen(
                     sessions = sessions,
                     isGatewayConfigured = viewModel.isGatewayConfigured,
                     isHttpConfigured = viewModel.isHttpConfigured,
-                    agents = agents,
-                    defaultAgentId = defaultAgentId,
                     onBack = { finish() },
                     onSessionClick = { session ->
                         viewModel.setUseNodeChat(session.isGateway)
@@ -88,7 +79,7 @@ class SessionListActivity : ComponentActivity() {
                     },
                     onCreateSession = { name, isGateway, agentId ->
                         viewModel.setUseNodeChat(isGateway)
-                        viewModel.createSession(name, isGateway, agentId) { sessionId, createdAsGateway ->
+                        viewModel.createSession(name, isGateway) { sessionId, createdAsGateway ->
                             startActivity(Intent(this, ChatActivity::class.java).apply {
                                 putExtra(ChatActivity.EXTRA_SESSION_ID, sessionId)
                                 putExtra(ChatActivity.EXTRA_SESSION_TITLE, name)
@@ -97,9 +88,6 @@ class SessionListActivity : ComponentActivity() {
                     },
                     onDeleteSession = { sessionId, isGateway ->
                         viewModel.deleteSession(sessionId, isGateway)
-                    },
-                    onRenameSession = { sessionId, newName, isGateway ->
-                        viewModel.renameSession(sessionId, newName, isGateway)
                     }
                 )
             }
@@ -118,21 +106,14 @@ fun SessionListScreen(
     sessions: List<SessionUiModel>,
     isGatewayConfigured: Boolean,
     isHttpConfigured: Boolean,
-    agents: List<AgentInfo> = emptyList(),
-    defaultAgentId: String = "main",
     onBack: () -> Unit,
     onSessionClick: (SessionUiModel) -> Unit,
     onCreateSession: (String, Boolean, String?) -> Unit,
-    onDeleteSession: (String, Boolean) -> Unit,
-    onRenameSession: (String, String, Boolean) -> Unit = { _, _, _ -> }
+    onDeleteSession: (String, Boolean) -> Unit
 ) {
     var sessionToDelete by remember { mutableStateOf<SessionUiModel?>(null) }
-    var sessionToRename by remember { mutableStateOf<SessionUiModel?>(null) }
-    var sessionActionTarget by remember { mutableStateOf<SessionUiModel?>(null) }
     var showTypeSelectionDialog by remember { mutableStateOf(false) }
     var showNameInputDialog by remember { mutableStateOf(false) }
-    var showGatewayCreateDialog by remember { mutableStateOf(false) }
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     val listState = rememberLazyListState()
     var scrollTrigger by remember { mutableIntStateOf(0) }
@@ -175,8 +156,8 @@ fun SessionListScreen(
                 } else if (isHttpConfigured && !isGatewayConfigured) {
                     showNameInputDialog = true
                 } else {
-                    // Gateway only
-                    showGatewayCreateDialog = true
+                    // Gateway only, or fallback
+                    onCreateSession("New Conversation", true, null)
                 }
             }) {
                 Icon(Icons.Default.Add, contentDescription = newSessionName)
@@ -209,14 +190,13 @@ fun SessionListScreen(
                     SessionListItem(
                         session = session,
                         onClick = { onSessionClick(session) },
-                        onLongClick = { sessionActionTarget = session }
+                        onLongClick = { sessionToDelete = session }
                     )
                 }
             }
         }
     }
 
-    // Type selection dialog (Gateway vs HTTP)
     if (showTypeSelectionDialog) {
         AlertDialog(
             onDismissRequest = { showTypeSelectionDialog = false },
@@ -233,7 +213,7 @@ fun SessionListScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showTypeSelectionDialog = false
-                    showGatewayCreateDialog = true
+                    onCreateSession("New Conversation", true, null)
                 }) {
                     Text(stringResource(R.string.chat_type_gateway))
                 }
@@ -241,97 +221,6 @@ fun SessionListScreen(
         )
     }
 
-    // Gateway creation dialog with name + agent selection
-    if (showGatewayCreateDialog) {
-        var inputName by remember { mutableStateOf("") }
-        var selectedAgentId by remember { mutableStateOf<String?>(null) }
-        var agentDropdownExpanded by remember { mutableStateOf(false) }
-
-        val effectiveAgentId = selectedAgentId ?: defaultAgentId
-        val selectedAgentName = agents.find { it.id == effectiveAgentId }?.name
-            ?: if (effectiveAgentId == "main" || effectiveAgentId.isBlank()) "Default" else effectiveAgentId
-
-        AlertDialog(
-            onDismissRequest = { showGatewayCreateDialog = false },
-            title = { Text(stringResource(R.string.new_chat)) },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = inputName,
-                        onValueChange = { inputName = it },
-                        label = { Text(stringResource(R.string.session_name_optional)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (agents.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Agent",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box {
-                            Surface(
-                                onClick = { agentDropdownExpanded = true },
-                                shape = MaterialTheme.shapes.small,
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = selectedAgentName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Default.ArrowDropDown,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                            DropdownMenu(
-                                expanded = agentDropdownExpanded,
-                                onDismissRequest = { agentDropdownExpanded = false }
-                            ) {
-                                agents.forEach { agent ->
-                                    DropdownMenuItem(
-                                        text = { Text(agent.name) },
-                                        onClick = {
-                                            selectedAgentId = agent.id
-                                            agentDropdownExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showGatewayCreateDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showGatewayCreateDialog = false
-                    val ts = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-                    val finalName = if (inputName.isNotBlank()) inputName else context.getString(R.string.chat_session_title_format, ts)
-                    val agentId = selectedAgentId ?: if (defaultAgentId != "main" && defaultAgentId.isNotBlank()) defaultAgentId else null
-                    onCreateSession(finalName, true, agentId)
-                }) {
-                    Text(stringResource(R.string.create))
-                }
-            }
-        )
-    }
-
-    // HTTP name input dialog
     if (showNameInputDialog) {
         var inputName by remember { mutableStateOf("") }
 
@@ -369,67 +258,6 @@ fun SessionListScreen(
     }
 
 
-
-    // Long-press action menu: Rename / Delete
-    sessionActionTarget?.let { session ->
-        AlertDialog(
-            onDismissRequest = { sessionActionTarget = null },
-            title = { Text(session.title, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
-            text = null,
-            confirmButton = {
-                TextButton(onClick = {
-                    sessionActionTarget = null
-                    sessionToRename = session
-                }) {
-                    Text(stringResource(R.string.rename_session))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    sessionActionTarget = null
-                    sessionToDelete = session
-                }) {
-                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
-                }
-            }
-        )
-    }
-
-    // Rename dialog
-    sessionToRename?.let { session ->
-        var renameInput by remember(session.id) { mutableStateOf(session.title) }
-        AlertDialog(
-            onDismissRequest = { sessionToRename = null },
-            title = { Text(stringResource(R.string.rename_session_title)) },
-            text = {
-                OutlinedTextField(
-                    value = renameInput,
-                    onValueChange = { renameInput = it },
-                    label = { Text(stringResource(R.string.rename_session_hint)) },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val name = renameInput.trim()
-                        if (name.isNotBlank()) {
-                            onRenameSession(session.id, name, session.isGateway)
-                        }
-                        sessionToRename = null
-                    },
-                    enabled = renameInput.isNotBlank()
-                ) {
-                    Text(stringResource(R.string.save))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { sessionToRename = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
 
     sessionToDelete?.let { session ->
         AlertDialog(

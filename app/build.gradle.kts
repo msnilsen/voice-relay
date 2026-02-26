@@ -81,11 +81,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
-            isMinifyEnabled = false
-            // CI sets FIREBASE_ENABLED=false for fork PRs so the APK launches without a real API key.
-            // Defaults to true for local development.
-            val firebaseEnabled = System.getenv("FIREBASE_ENABLED")?.toBooleanStrictOrNull() ?: true
-            buildConfigField("boolean", "FIREBASE_ENABLED", firebaseEnabled.toString())
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -93,7 +89,6 @@ android {
         }
         release {
             isMinifyEnabled = true
-            buildConfigField("boolean", "FIREBASE_ENABLED", "true")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
