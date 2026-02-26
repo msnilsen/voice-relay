@@ -2,6 +2,7 @@ package com.openclaw.assistant
 
 import android.app.Application
 import android.util.Log
+import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import java.security.Security
 
@@ -13,6 +14,12 @@ class OpenClawApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // In debug builds, FirebaseInitProvider is removed from the manifest so that fork PRs
+        // (which lack a real API key) do not crash on launch. Initialize Firebase manually here
+        // when the build flag indicates a real key is present.
+        if (BuildConfig.DEBUG && BuildConfig.FIREBASE_ENABLED) {
+            FirebaseApp.initializeApp(this)
+        }
         // Register Bouncy Castle as highest-priority provider for Ed25519 support
         try {
             val bcProvider = Class.forName("org.bouncycastle.jce.provider.BouncyCastleProvider")
@@ -21,7 +28,9 @@ class OpenClawApplication : Application() {
             Security.insertProviderAt(bcProvider, 1)
         } catch (e: Throwable) {
             Log.e("OpenClawApp", "Failed to register Bouncy Castle provider", e)
-            FirebaseCrashlytics.getInstance().recordException(e)
+            if (BuildConfig.FIREBASE_ENABLED) {
+                FirebaseCrashlytics.getInstance().recordException(e)
+            }
         }
     }
 }

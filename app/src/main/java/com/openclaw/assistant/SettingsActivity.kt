@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -136,6 +137,9 @@ fun SettingsScreen(
     var gatewayPort by rememberSaveable { mutableStateOf(manualPortState.toString()) }
     var gatewayTls by rememberSaveable { mutableStateOf(manualTlsState) }
     var gatewayToken by rememberSaveable { mutableStateOf(gatewayTokenState) }
+    var gatewayPassword by rememberSaveable { mutableStateOf(runtime.getGatewayPassword() ?: "") }
+    var showGatewayPassword by rememberSaveable { mutableStateOf(false) }
+    var usePasswordAuth by rememberSaveable { mutableStateOf(runtime.getGatewayPassword()?.isNotEmpty() == true) }
 
     // HTTP inputs
     var httpInputUrl by rememberSaveable { mutableStateOf(httpUrl) }
@@ -220,7 +224,13 @@ fun SettingsScreen(
                             runtime.setManualHost(gatewayHost.trim())
                             runtime.setManualPort(gatewayPort.toIntOrNull() ?: 18789)
                             runtime.setManualTls(gatewayTls)
-                            runtime.setGatewayToken(gatewayToken.trim())
+                            if (usePasswordAuth) {
+                                runtime.setGatewayToken("")
+                                runtime.setGatewayPassword(gatewayPassword.trim())
+                            } else {
+                                runtime.setGatewayToken(gatewayToken.trim())
+                                runtime.setGatewayPassword("")
+                            }
 
                             // Save HTTP Settings
                             settings.httpUrl = httpInputUrl.trim()
@@ -334,22 +344,71 @@ fun SettingsScreen(
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             
-                            OutlinedTextField(
-                                value = gatewayToken,
-                                onValueChange = { gatewayToken = it; testResult = null },
-                                label = { Text(stringResource(R.string.gateway_token)) },
-                                trailingIcon = {
-                                    IconButton(onClick = { showNodeToken = !showNodeToken }) {
-                                        Icon(
-                                            if (showNodeToken) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                            contentDescription = null
-                                        )
-                                    }
-                                },
-                                visualTransformation = if (showNodeToken) VisualTransformation.None else PasswordVisualTransformation(),
+                            Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            )
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { usePasswordAuth = false; testResult = null }
+                                ) {
+                                    RadioButton(
+                                        selected = !usePasswordAuth,
+                                        onClick = { usePasswordAuth = false; testResult = null }
+                                    )
+                                    Text(stringResource(R.string.gateway_token))
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { usePasswordAuth = true; testResult = null }
+                                ) {
+                                    RadioButton(
+                                        selected = usePasswordAuth,
+                                        onClick = { usePasswordAuth = true; testResult = null }
+                                    )
+                                    Text(stringResource(R.string.gateway_password))
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            if (!usePasswordAuth) {
+                                OutlinedTextField(
+                                    value = gatewayToken,
+                                    onValueChange = { gatewayToken = it; testResult = null },
+                                    label = { Text(stringResource(R.string.gateway_token)) },
+                                    trailingIcon = {
+                                        IconButton(onClick = { showNodeToken = !showNodeToken }) {
+                                            Icon(
+                                                if (showNodeToken) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    },
+                                    visualTransformation = if (showNodeToken) VisualTransformation.None else PasswordVisualTransformation(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
+                            } else {
+                                OutlinedTextField(
+                                    value = gatewayPassword,
+                                    onValueChange = { gatewayPassword = it; testResult = null },
+                                    label = { Text(stringResource(R.string.gateway_password)) },
+                                    trailingIcon = {
+                                        IconButton(onClick = { showGatewayPassword = !showGatewayPassword }) {
+                                            Icon(
+                                                if (showGatewayPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    },
+                                    visualTransformation = if (showGatewayPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                                )
+                            }
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             

@@ -69,6 +69,7 @@ import com.openclaw.assistant.ui.components.ConnectionState
 import com.openclaw.assistant.ui.components.PairingRequiredCard
 import com.openclaw.assistant.ui.components.StatusIndicator
 import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
+import com.openclaw.assistant.ui.SetupGuideScreen
 
 data class PermissionStatusInfo(
     val permissionName: String,
@@ -152,34 +153,49 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         runtime.screenRecorder.attachPermissionRequester(permissionRequester)
         
         initializeTTS()
-        checkPermissions()
+        // Removed checkPermissions() from onCreate to allow SetupGuideScreen to handle it
         refreshMissingPermissions()
         refreshAllPermissionsStatus()
 
         setContent {
             OpenClawAssistantTheme {
-                PostOnboardingTabs(
-                    settings = settings,
-                    diagnostic = voiceDiagnostic,
-                    missingPermissions = missingPermissions,
-                    allPermissionsStatus = allPermissionsStatus,
-                    onRefreshDiagnostics = {
-                        initializeTTS()
-                        refreshAllPermissionsStatus()
-                    },
-                    onRequestPermissions = { permissions ->
-                        val ungranted = permissions.filter {
-                            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+                val hasCompletedSetup by remember { mutableStateOf(settings.hasCompletedSetup) }
+                var showSetupGuide by remember { mutableStateOf(!hasCompletedSetup) }
+
+                if (showSetupGuide) {
+                    SetupGuideScreen(
+                        settings = settings,
+                        onComplete = {
+                            showSetupGuide = false
+                            // After setup, we might want to trigger permission refresh or other once
+                            refreshMissingPermissions()
+                            refreshAllPermissionsStatus()
                         }
-                        if (ungranted.isNotEmpty()) {
-                            permissionLauncher.launch(ungranted.toTypedArray())
+                    )
+                } else {
+                    PostOnboardingTabs(
+                        settings = settings,
+                        diagnostic = voiceDiagnostic,
+                        missingPermissions = missingPermissions,
+                        allPermissionsStatus = allPermissionsStatus,
+                        onRefreshDiagnostics = {
+                            initializeTTS()
+                            refreshAllPermissionsStatus()
+                        },
+                        onRequestPermissions = { permissions ->
+                            val ungranted = permissions.filter {
+                                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+                            }
+                            if (ungranted.isNotEmpty()) {
+                                permissionLauncher.launch(ungranted.toTypedArray())
+                            }
+                        },
+                        onOpenAppSettings = { openAppSettings() },
+                        onOpenSettings = {
+                            // Settings tab is handled internally by PostOnboardingTabs
                         }
-                    },
-                    onOpenAppSettings = { openAppSettings() },
-                    onOpenSettings = {
-                        // Settings tab is handled internally by PostOnboardingTabs
-                    }
-                )
+                    )
+                }
             }
         }
     }

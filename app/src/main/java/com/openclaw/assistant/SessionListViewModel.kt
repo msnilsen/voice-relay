@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.openclaw.assistant.data.local.entity.SessionEntity
 import com.openclaw.assistant.data.repository.ChatRepository
 import com.openclaw.assistant.data.SettingsRepository
+import com.openclaw.assistant.gateway.AgentInfo
+import com.openclaw.assistant.gateway.AgentListResult
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +33,8 @@ class SessionListViewModel(application: Application) : AndroidViewModel(applicat
                 
     val isHttpConfigured: Boolean
         get() = settingsRepository.isConfigured()
+
+    val agentList: StateFlow<AgentListResult?> = nodeRuntime.agentList
 
     val allSessions: StateFlow<List<SessionUiModel>> = combine(
         nodeRuntime.chatSessions,
@@ -66,9 +70,10 @@ class SessionListViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun createSession(name: String, isGateway: Boolean, onCreated: (String, Boolean) -> Unit) {
+    fun createSession(name: String, isGateway: Boolean, agentId: String? = null, onCreated: (String, Boolean) -> Unit) {
         if (isGateway) {
-            val id = "chat-${java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())}"
+            val ts = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+            val id = if (!agentId.isNullOrBlank()) "agent:$agentId:chat-$ts" else "chat-$ts"
             viewModelScope.launch {
                 nodeRuntime.patchChatSession(id, name.trim())
                 onCreated(id, true)
@@ -83,6 +88,19 @@ class SessionListViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setUseNodeChat(useNodeChat: Boolean) {
         settingsRepository.useNodeChat = useNodeChat
+    }
+
+    fun renameSession(sessionId: String, newName: String, isGateway: Boolean) {
+        if (isGateway) {
+            viewModelScope.launch {
+                nodeRuntime.patchChatSession(sessionId, newName.trim())
+                nodeRuntime.refreshChatSessions()
+            }
+        } else {
+            viewModelScope.launch {
+                chatRepository.renameSession(sessionId, newName.trim())
+            }
+        }
     }
 
     fun deleteSession(sessionId: String, isGateway: Boolean) {

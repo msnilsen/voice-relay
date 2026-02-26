@@ -131,6 +131,7 @@ class NodeRuntime(context: Context) {
     smsAvailable = { sms.canSendSms() },
     hasRecordAudioPermission = { hasRecordAudioPermission() },
     manualTls = { manualTls.value },
+    deviceId = { deviceId },
   )
 
   private val invokeDispatcher: InvokeDispatcher = InvokeDispatcher(
@@ -287,7 +288,7 @@ class NodeRuntime(context: Context) {
       scope = scope,
       session = operatorSession,
       json = json,
-      supportsChatSubscribe = true,
+      supportsChatSubscribe = false, // node.event is node-role only; operator connections receive events automatically
     )
 
   private fun applyMainSessionKey(candidate: String?) {
@@ -366,6 +367,8 @@ class NodeRuntime(context: Context) {
   val manualTls: StateFlow<Boolean> = prefs.manualTls
   val gatewayToken: StateFlow<String> = prefs.gatewayToken
   fun setGatewayToken(value: String) = prefs.setGatewayToken(value)
+  fun getGatewayPassword(): String? = prefs.loadGatewayPassword()
+  fun setGatewayPassword(value: String) = prefs.saveGatewayPassword(value)
   val lastDiscoveredStableId: StateFlow<String> = prefs.lastDiscoveredStableId
   val canvasDebugStatusEnabled: StateFlow<Boolean> = prefs.canvasDebugStatusEnabled
 
@@ -586,12 +589,15 @@ class NodeRuntime(context: Context) {
     val tls = connectionManager.resolveTlsParams(endpoint)
     if (tls?.required == true && tls.expectedFingerprint.isNullOrBlank()) {
       // First-time TLS: capture fingerprint, ask user to verify out-of-band, then store and connect.
-      _statusText.value = appContext.getString(R.string.state_verify_fingerprint)
       scope.launch {
+        _statusText.value = appContext.getString(R.string.state_verify_fingerprint)
+        android.util.Log.d("NodeRuntime", "Starting TLS probe for ${endpoint.host}:${endpoint.port}")
         val fp = probeGatewayTlsFingerprint(endpoint.host, endpoint.port) ?: run {
+          android.util.Log.e("NodeRuntime", "TLS probe failed")
           _statusText.value = appContext.getString(R.string.state_failed_fingerprint)
           return@launch
         }
+        android.util.Log.d("NodeRuntime", "TLS probe success, setting pending trust")
         _pendingGatewayTrust.value = GatewayTrustPrompt(endpoint = endpoint, fingerprintSha256 = fp)
       }
       return

@@ -1,8 +1,10 @@
 package com.openclaw.assistant.chat
 
+import android.util.Log
 import com.openclaw.assistant.gateway.GatewaySession
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -57,7 +59,7 @@ class ChatController(
 
   private val pendingRuns = mutableSetOf<String>()
   private val pendingRunTimeoutJobs = ConcurrentHashMap<String, Job>()
-  private val pendingRunTimeoutMs = 120_000L
+  private val pendingRunTimeoutMs = 300_000L
 
   private var bootstrapJob: Job? = null
 
@@ -81,22 +83,24 @@ class ChatController(
     if (_sessionKey.value == key && bootstrapJob?.isActive == true) return
     _sessionKey.value = key
     bootstrapJob?.cancel()
-    bootstrapJob = scope.launch { bootstrap(forceHealth = true) }
+    bootstrapJob = scope.launch { bootstrap(forceHealth = true, clearMessages = false) }
   }
 
   fun applyMainSessionKey(mainSessionKey: String) {
     val trimmed = mainSessionKey.trim()
+    Log.d("AgentDbg", "ChatController.applyMainSessionKey: current=${_sessionKey.value} candidate=$trimmed")
     if (trimmed.isEmpty()) return
     if (_sessionKey.value == trimmed) return
     if (_sessionKey.value != "main") return
+    Log.d("AgentDbg", "ChatController.applyMainSessionKey: applying $trimmed (was 'main')")
     _sessionKey.value = trimmed
     bootstrapJob?.cancel()
-    bootstrapJob = scope.launch { bootstrap(forceHealth = true) }
+    bootstrapJob = scope.launch { bootstrap(forceHealth = true, clearMessages = true) }
   }
 
   fun refresh() {
     bootstrapJob?.cancel()
-    bootstrapJob = scope.launch { bootstrap(forceHealth = true) }
+    bootstrapJob = scope.launch { bootstrap(forceHealth = true, clearMessages = false) }
   }
 
   fun refreshSessions(limit: Int? = null) {
@@ -111,11 +115,12 @@ class ChatController(
 
   fun switchSession(sessionKey: String) {
     val key = sessionKey.trim()
+    Log.d("AgentDbg", "ChatController.switchSession: from=${_sessionKey.value} to=$key")
     if (key.isEmpty()) return
     if (key == _sessionKey.value) return
     _sessionKey.value = key
     bootstrapJob?.cancel()
-    bootstrapJob = scope.launch { bootstrap(forceHealth = true) }
+    bootstrapJob = scope.launch { bootstrap(forceHealth = true, clearMessages = true) }
   }
 
   fun sendMessage(
@@ -195,8 +200,10 @@ class ChatController(
               )
             }
           }
+        Log.d("ChatDbg", "chat.send start idempotencyKey=$runId sessionKey=$sessionKey")
         val res = session.request("chat.send", params.toString(), timeoutMs = 35_000)
         val actualRunId = parseRunId(res) ?: runId
+        Log.d("ChatDbg", "chat.send response: actualRunId=$actualRunId (same=${actualRunId == runId}) res=$res")
         if (actualRunId != runId) {
           clearPendingRun(runId)
           armPendingRunTimeout(actualRunId)
@@ -206,6 +213,8 @@ class ChatController(
           }
         }
       } catch (err: Throwable) {
+        if (err is CancellationException) throw err
+        Log.e("ChatDbg", "chat.send error: ${err.message}")
         clearPendingRun(runId)
         _errorText.value = err.message
       }
@@ -258,14 +267,16 @@ class ChatController(
     }
   }
 
-  private suspend fun bootstrap(forceHealth: Boolean) {
+  private suspend fun bootstrap(forceHealth: Boolean, clearMessages: Boolean = false) {
     _errorText.value = null
     clearPendingRuns()
     pendingToolCallsById.clear()
     publishPendingToolCalls()
     _streamingAssistantText.value = null
     _sessionId.value = null
-    _messages.value = emptyList() // clear stale messages while loading
+    if (clearMessages) {
+      _messages.value = emptyList() // clear stale messages while loading
+    }
 
     val key = _sessionKey.value
     try {
@@ -289,6 +300,7 @@ class ChatController(
       pollHealthIfNeeded(force = forceHealth)
       fetchSessions(limit = 50)
     } catch (err: Throwable) {
+      if (err is CancellationException) throw err
       _errorText.value = err.message
     }
   }
@@ -324,10 +336,22 @@ class ChatController(
   private fun handleChatEvent(payloadJson: String) {
     val payload = json.parseToJsonElement(payloadJson).asObjectOrNull() ?: return
     val sessionKey = payload["sessionKey"].asStringOrNull()?.trim()
-    if (!sessionKey.isNullOrEmpty() && sessionKey != _sessionKey.value) return
+    if (!sessionKey.isNullOrEmpty() && sessionKey != _sessionKey.value) {
+      // Gateway may return a canonical "agent:<id>:<name>" key even if we sent a bare "<name>" key.
+      // Accept the event if the gateway key ends with our key (e.g. "agent:x:chat-ts" ends with "chat-ts")
+      // and update _sessionKey to the canonical form so future events match.
+      if (_sessionKey.value.isNotEmpty() && sessionKey.endsWith(":${_sessionKey.value}")) {
+        Log.d("ChatDbg", "handleChatEvent: upgrading sessionKey ${_sessionKey.value} -> $sessionKey")
+        _sessionKey.value = sessionKey
+      } else {
+        Log.d("ChatDbg", "handleChatEvent: sessionKey mismatch event=$sessionKey current=${_sessionKey.value}, skipping")
+        return
+      }
+    }
 
     val runId = payload["runId"].asStringOrNull()
     val state = payload["state"].asStringOrNull()
+    Log.d("ChatDbg", "handleChatEvent: state=$state runId=$runId sessionKey=$sessionKey pendingRuns=${synchronized(pendingRuns){pendingRuns.toList()}}")
     if (runId != null) {
       val isPending =
         synchronized(pendingRuns) {
@@ -359,6 +383,8 @@ class ChatController(
             val historyJson =
               session.request("chat.history", """{"sessionKey":"${_sessionKey.value}"}""")
             val history = parseHistory(historyJson, sessionKey = _sessionKey.value)
+            val lastMsg = history.messages.lastOrNull()
+            Log.d("ChatDbg", "handleChatEvent: history reloaded msgCount=${history.messages.size} state=$state lastRole=${lastMsg?.role} lastText=${lastMsg?.content?.firstOrNull()?.text?.take(50)}")
             _messages.value = history.messages
             _sessionId.value = history.sessionId
             history.thinkingLevel?.trim()?.takeIf { it.isNotEmpty() }?.let { _thinkingLevel.value = it }
