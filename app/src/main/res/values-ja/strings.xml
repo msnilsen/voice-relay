@@ -144,6 +144,10 @@
     <string name="create">作成</string>
     <string name="delete_session_title">会話を削除しますか？</string>
     <string name="delete_session_message">「%s」は完全に削除されます。</string>
+    <string name="rename_session">名前を変更</string>
+    <string name="rename_session_title">会話名を変更</string>
+    <string name="rename_session_hint">会話名</string>
+    <string name="save">保存</string>
 
     <!-- Screen Capture Dialog -->
     <string name="screen_capture_title">画面キャプチャを開始しますか？</string>
