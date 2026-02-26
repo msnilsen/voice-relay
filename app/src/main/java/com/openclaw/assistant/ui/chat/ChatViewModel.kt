@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.openclaw.assistant.OpenClawApplication
 import com.openclaw.assistant.api.OpenClawClient
 import com.openclaw.assistant.data.SettingsRepository
+import com.openclaw.assistant.chat.ChatMarkdownPreprocessor
 import com.openclaw.assistant.gateway.AgentInfo
 import com.openclaw.assistant.speech.SpeechRecognizerManager
 import com.openclaw.assistant.speech.SpeechResult
@@ -857,10 +858,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun com.openclaw.assistant.chat.ChatMessage.toUiChatMessage(): ChatMessage {
         val mergedText = content.joinToString("\n") { it.text ?: "" }.trim().ifBlank { "(no text)" }
+        val preprocessed = ChatMarkdownPreprocessor.preprocess(mergedText)
         val isUserMessage = role.equals("user", ignoreCase = true)
         return ChatMessage(
             id = id,
-            text = mergedText,
+            text = preprocessed,
             isUser = isUserMessage,
             timestamp = timestampMs ?: System.currentTimeMillis()
         )
