@@ -12,6 +12,7 @@ import android.widget.Toast
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
@@ -30,8 +31,6 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.SmartToy
@@ -39,6 +38,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +52,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.openclaw.assistant.speech.TTSUtils
@@ -67,15 +69,23 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 import com.openclaw.assistant.data.SettingsRepository
+import com.openclaw.assistant.service.HotwordService
+import com.openclaw.assistant.ui.GatewayTrustDialog
 
 private const val TAG = "ChatActivity"
 
 class ChatActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
+    companion object {
+        const val EXTRA_SESSION_ID = "EXTRA_SESSION_ID"
+        const val EXTRA_SESSION_TITLE = "EXTRA_SESSION_TITLE"
+    }
+
     private val viewModel: ChatViewModel by viewModels()
     private var tts: TextToSpeech? = null
     private var isRetry = false
     private lateinit var settings: SettingsRepository
+    private var hasResumedOnce = false
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -90,6 +100,12 @@ class ChatActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = SettingsRepository.getInstance(this)
+
+        // Select specific session if provided via Intent (must be before setContent)
+        val extraTitle = intent.getStringExtra(EXTRA_SESSION_TITLE)
+        intent.getStringExtra(EXTRA_SESSION_ID)?.let { sessionId ->
+            viewModel.selectSessionOnStart(sessionId, extraTitle)
+        }
 
         // Initialize TTS with Activity context (important for MIUI!)
         // Try Google TTS first for better compatibility on Chinese ROMs
@@ -106,13 +122,15 @@ class ChatActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 val uiState by viewModel.uiState.collectAsState()
                 val allSessions by viewModel.allSessions.collectAsState()
                 val currentSessionId by viewModel.currentSessionId.collectAsState()
+                val initialSessionTitle by viewModel.initialSessionTitle.collectAsState()
                 val prefillText = intent.getStringExtra("EXTRA_PREFILL_TEXT") ?: ""
-                
+
                 ChatScreen(
                     initialText = prefillText,
                     uiState = uiState,
                     allSessions = allSessions,
                     currentSessionId = currentSessionId,
+                    initialSessionTitle = initialSessionTitle,
                     onSendMessage = { viewModel.sendMessage(it) },
                     onStartListening = {
                         Log.e(TAG, "onStartListening called, permission=${checkPermission()}")
@@ -137,7 +155,9 @@ class ChatActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     onToggleCanvas = { viewModel.toggleCanvas() },
                     onCanvasSnapshot = { id, b64 -> viewModel.onSnapshotCaptured(id, b64) },
                     onCanvasEvalCompleted = { viewModel.onEvalCompleted() },
-                    onCanvasA2uiProcessed = { viewModel.onA2uiProcessed() }
+                    onCanvasA2uiProcessed = { viewModel.onA2uiProcessed() },
+                    onAcceptGatewayTrust = { viewModel.acceptGatewayTrust() },
+                    onDeclineGatewayTrust = { viewModel.declineGatewayTrust() }
                 )
             }
         }
@@ -145,9 +165,9 @@ class ChatActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     private fun initializeTTS() {
         Log.e(TAG, "Initializing TTS (isRetry=$isRetry)...")
-        
+
         val preferredEngine = settings.ttsEngine
-        
+
         if (!isRetry && preferredEngine.isNotEmpty()) {
              Log.e(TAG, "Trying preferred engine: $preferredEngine")
              tts = TextToSpeech(this, this, preferredEngine)
@@ -164,7 +184,7 @@ class ChatActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         Log.e(TAG, "TTS onInit callback, status=$status (SUCCESS=${TextToSpeech.SUCCESS})")
         if (status == TextToSpeech.SUCCESS) {
             TTSUtils.setupVoice(tts, settings.ttsSpeed, settings.speechLanguage.ifEmpty { null })
-            
+
             // Pass TTS to ViewModel
             tts?.let { viewModel.setTTS(it) }
             Log.e(TAG, "TTS initialized successfully and passed to ViewModel")
@@ -175,6 +195,29 @@ class ChatActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 initializeTTS()
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Pause hotword detection while this activity holds the mic.
+        // setPackage is required to reach NodeForegroundService (RECEIVER_NOT_EXPORTED).
+        sendBroadcast(Intent(HotwordService.ACTION_PAUSE_HOTWORD).apply { setPackage(packageName) })
+        // Refresh chat history in NodeChat mode to show any responses that arrived
+        // while the screen was away (e.g., after returning from the session list).
+        // Skip on first resume (right after onCreate) since loadChat bootstrap is already running.
+        if (hasResumedOnce) {
+            viewModel.refreshChatIfNeeded()
+        }
+        hasResumedOnce = true
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Stop any ongoing speech recognition before releasing the mic
+        viewModel.stopListening()
+        // Resume hotword detection now that the mic will be released.
+        // setPackage is required to reach NodeForegroundService (RECEIVER_NOT_EXPORTED).
+        sendBroadcast(Intent(HotwordService.ACTION_RESUME_HOTWORD).apply { setPackage(packageName) })
     }
 
     override fun onDestroy() {
@@ -223,6 +266,7 @@ fun ChatScreen(
     uiState: ChatUiState,
     allSessions: List<com.openclaw.assistant.data.local.entity.SessionEntity>,
     currentSessionId: String?,
+    initialSessionTitle: String? = null,
     onSendMessage: (String) -> Unit,
     onStartListening: () -> Unit,
     onStopListening: () -> Unit,
@@ -236,24 +280,21 @@ fun ChatScreen(
     onToggleCanvas: () -> Unit = {},
     onCanvasSnapshot: (String, String) -> Unit = { _, _ -> },
     onCanvasEvalCompleted: () -> Unit = {},
-    onCanvasA2uiProcessed: () -> Unit = {}
+    onCanvasA2uiProcessed: () -> Unit = {},
+    onAcceptGatewayTrust: () -> Unit = {},
+    onDeclineGatewayTrust: () -> Unit = {}
 ) {
-    var inputText by remember { mutableStateOf(initialText) }
+    var inputText by rememberSaveable { mutableStateOf(initialText) }
     val listState = rememberLazyListState()
     val keyboardController = LocalSoftwareKeyboardController.current
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
 
     // Group messages by date
     val groupedItems = remember(uiState.messages) {
         val items = mutableListOf<ChatListItem>()
         val locale = Locale.getDefault()
-        // Use system's best format skeleton for "Month Day DayOfWeek"
         val skeleton = android.text.format.DateFormat.getBestDateTimePattern(locale, "MMMdEEE")
         val dateFormat = java.text.SimpleDateFormat(skeleton, locale)
-        
         var lastDate = ""
-
         uiState.messages.forEach { message ->
             val date = dateFormat.format(java.util.Date(message.timestamp))
             if (date != lastDate) {
@@ -262,86 +303,38 @@ fun ChatScreen(
             }
             items.add(ChatListItem.MessageItem(message))
         }
-        items
+        items.reversed()
     }
 
-    // Scroll to bottom when new messages arrive
-    LaunchedEffect(groupedItems.size) {
-        if (groupedItems.isNotEmpty()) {
-            listState.animateScrollToItem(groupedItems.size - 1)
+    // Scroll to bottom effect (animate when size changes)
+    var previousItemCount by remember { mutableIntStateOf(groupedItems.size) }
+    LaunchedEffect(groupedItems.size, uiState.isThinking, uiState.isSpeaking, uiState.pendingToolCalls.size) {
+        if (groupedItems.size > previousItemCount + 1 || previousItemCount == 0) {
+            listState.scrollToItem(0)
+        } else {
+            listState.animateScrollToItem(0)
+        }
+        previousItemCount = groupedItems.size
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short
+            )
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState, // ... (rest of drawer content remains same, omitted for brevity if no changes needed there but I need to replace the whole function if using replace_file_content)
-        drawerContent = {
-            ModalDrawerSheet {
-                Spacer(Modifier.height(12.dp))
-                // PaddingValues(horizontal = 16.dp) 
-                Text(
-                    text = stringResource(R.string.conversations_title),
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.titleMedium
-                )
-                HorizontalDivider()
-                
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.new_chat)) },
-                    selected = false,
-                    onClick = {
-                        onCreateSession()
-                        scope.launch { drawerState.close() }
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                    icon = { Icon(Icons.Default.Add, null) }
-                )
-                
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                LazyColumn {
-                    items(allSessions) { session ->
-                        val isSelected = session.id == currentSessionId
-                        NavigationDrawerItem(
-                            label = { 
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = session.title,
-                                        maxLines = 1,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    IconButton(
-                                        onClick = { onDeleteSession(session.id) },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Delete,
-                                            contentDescription = stringResource(R.string.delete),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            },
-                            selected = isSelected,
-                            onClick = {
-                                onSelectSession(session.id)
-                                scope.launch { drawerState.close() }
-                            },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                        )
-                    }
-                }
-            }
-        }
-    ) {
-        Scaffold(
+    Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 TopAppBar(
                     title = {
                         val sessionTitle = allSessions.find { it.id == currentSessionId }?.title
+                            ?: initialSessionTitle
                             ?: stringResource(R.string.new_chat)
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -357,7 +350,8 @@ fun ChatScreen(
                                 agents = uiState.availableAgents,
                                 selectedAgentId = uiState.selectedAgentId,
                                 defaultAgentId = uiState.defaultAgentId,
-                                onAgentSelected = onAgentSelected
+                                onAgentSelected = onAgentSelected,
+                                isReadOnly = uiState.isNodeChatMode
                             )
                         }
                     },
@@ -411,18 +405,17 @@ fun ChatScreen(
                         }
                     }
 
-                     if (uiState.partialText.isNotBlank()) {
-                         Text(
-                             text = uiState.partialText,
-                             modifier = Modifier
-                                 .fillMaxWidth()
-                                 .padding(horizontal = 16.dp, vertical = 8.dp)
-                                 .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-                                 .padding(12.dp),
-                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                         )
-                     }
-                    
+                    if (uiState.partialText.isNotBlank()) {
+                        Text(
+                            text = uiState.partialText,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+                                .padding(12.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     ChatInputArea(
                         value = inputText,
                         onValueChange = { inputText = it },
@@ -446,47 +439,80 @@ fun ChatScreen(
                 }
             }
         ) { paddingValues ->
-            Column(modifier = Modifier.padding(paddingValues)) {
+            Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                // Gateway TLS Trust prompt
+                if (uiState.pendingGatewayTrust != null) {
+                    GatewayTrustDialog(
+                        prompt = uiState.pendingGatewayTrust,
+                        onAccept = onAcceptGatewayTrust,
+                        onDecline = onDeclineGatewayTrust
+                    )
+                }
+
                 // Pairing Guidance
                 if (uiState.isPairingRequired && uiState.deviceId != null) {
                     Box(modifier = Modifier.padding(16.dp)) {
-                        PairingRequiredCard(deviceId = uiState.deviceId)
+                        PairingRequiredCard(deviceId = uiState.deviceId, displayName = uiState.displayName)
                     }
                 }
 
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp, top = 8.dp)
-                ) {
-                     items(groupedItems) { item ->
-                        when (item) {
-                            is ChatListItem.DateSeparator -> {
-                                DateHeader(item.dateText)
-                            }
-                            is ChatListItem.MessageItem -> {
-                                MessageBubble(message = item.message)
+                Box(modifier = Modifier.weight(1f)) {
+                    LazyColumn(
+                        state = listState,
+                        reverseLayout = true,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 16.dp, top = 8.dp)
+                    ) {
+                        if (uiState.pendingToolCalls.isNotEmpty()) {
+                            item { PendingToolsIndicator(uiState.pendingToolCalls) }
+                        }
+                        if (uiState.isSpeaking) {
+                            item { SpeakingIndicator(onStop = onStopSpeaking) }
+                        }
+                        if (uiState.isThinking) {
+                            item { ThinkingIndicator() }
+                        }
+
+                        items(groupedItems) { item ->
+                            when (item) {
+                                is ChatListItem.DateSeparator -> DateHeader(item.dateText)
+                                is ChatListItem.MessageItem -> MessageBubble(message = item.message)
                             }
                         }
                     }
-                    
-                    if (uiState.isThinking) {
-                        item {
-                            ThinkingIndicator()
-                        }
+
+                    // Scroll to bottom button
+                    val showScrollToBottom by remember {
+                        derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
                     }
-                    if (uiState.isSpeaking) {
-                        item {
-                            SpeakingIndicator(onStop = onStopSpeaking)
+
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = showScrollToBottom,
+                        enter = androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.fadeOut(),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 16.dp, bottom = 16.dp)
+                    ) {
+                        val coroutineScope = rememberCoroutineScope()
+                        SmallFloatingActionButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    listState.animateScrollToItem(0)
+                                }
+                            },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ) {
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.scroll_to_bottom))
                         }
                     }
                 }
             }
         }
-    }
 }
 
 @Composable
@@ -515,10 +541,10 @@ fun DateHeader(dateText: String) {
 fun MessageBubble(message: ChatMessage) {
     val isUser = message.isUser
     val alignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
-    val containerColor = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
-    val contentColor = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-    
-    // Friendly rounded shapes
+    val containerColor = if (isUser) Color(0xFFFFBCA3) else Color(0xFFE8F5E9) // Light green for AI
+    val contentColor = Color(0xFF1E1E1E) // Dark grey for both
+
+    // Friendly rounded shapes with tail on sender's side
     val shape = if (isUser) {
         RoundedCornerShape(18.dp, 18.dp, 4.dp, 18.dp)
     } else {
@@ -529,40 +555,60 @@ fun MessageBubble(message: ChatMessage) {
         java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(java.util.Date(message.timestamp))
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = alignment
     ) {
-        Column(horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = containerColor),
-                shape = shape,
-                modifier = Modifier.widthIn(max = 300.dp)
-            ) {
-                SelectionContainer {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        if (isUser) {
-                            Text(
-                                text = message.text,
-                                color = contentColor,
-                                fontSize = 16.sp,
-                                lineHeight = 24.sp
-                            )
-                        } else {
-                            MarkdownText(
-                                markdown = message.text,
-                                color = contentColor
+        Card(
+            colors = CardDefaults.cardColors(containerColor = containerColor),
+            shape = shape,
+            modifier = Modifier.widthIn(max = 300.dp)
+        ) {
+            SelectionContainer {
+                Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 6.dp)) {
+                    if (isUser) {
+                        Text(
+                            text = message.text,
+                            color = contentColor,
+                            fontSize = 16.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                            lineHeight = 24.sp
+                        )
+                    } else {
+                        MarkdownText(
+                            markdown = message.text,
+                            color = contentColor
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.align(Alignment.End),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = timestamp,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = contentColor.copy(alpha = 0.5f)
+                        )
+                        if (!isUser) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copy",
+                                tint = contentColor.copy(alpha = 0.4f),
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .clickable {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("message", message.text))
+                                    }
                             )
                         }
                     }
                 }
             }
-            Text(
-                text = timestamp,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp, start = 8.dp, end = 8.dp)
-            )
         }
     }
 }
@@ -587,8 +633,8 @@ fun ThinkingIndicator() {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                stringResource(R.string.thinking), 
-                fontSize = 14.sp, 
+                stringResource(R.string.thinking),
+                fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
             )
@@ -612,8 +658,8 @@ fun SpeakingIndicator(onStop: () -> Unit) {
             Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                stringResource(R.string.speaking), 
-                fontSize = 14.sp, 
+                stringResource(R.string.speaking),
+                fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
             )
@@ -625,18 +671,63 @@ fun SpeakingIndicator(onStop: () -> Unit) {
     }
 }
 
+@Composable
+fun PendingToolsIndicator(toolCalls: List<String>) {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(vertical = 8.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(14.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.running_tools),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                toolCalls.take(5).forEach { call ->
+                    val toolName = call.split(" ").firstOrNull() ?: call
+                    SuggestionChip(
+                        onClick = {},
+                        label = { Text(toolName, style = MaterialTheme.typography.labelSmall) },
+                        modifier = Modifier.height(28.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentSelector(
     agents: List<AgentInfo>,
     selectedAgentId: String?,
     defaultAgentId: String = "main",
-    onAgentSelected: (String?) -> Unit
+    onAgentSelected: (String?) -> Unit,
+    isReadOnly: Boolean = false
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     val effectiveId = selectedAgentId ?: defaultAgentId
     val selectedAgent = agents.find { it.id == effectiveId }
-    
+
     // Determine display name
     val displayName = if (selectedAgent != null) {
         selectedAgent.name
@@ -649,7 +740,13 @@ fun AgentSelector(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .clickable { if (agents.isNotEmpty()) expanded = true }
+                .then(
+                    if (!isReadOnly && agents.isNotEmpty()) {
+                        Modifier.clickable { expanded = true }
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(vertical = 4.dp, horizontal = 4.dp)
         ) {
             Icon(
@@ -665,16 +762,18 @@ fun AgentSelector(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
             )
-            Spacer(modifier = Modifier.width(2.dp))
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (!isReadOnly) {
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
-        if (agents.isNotEmpty()) {
+        if (!isReadOnly && agents.isNotEmpty()) {
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }

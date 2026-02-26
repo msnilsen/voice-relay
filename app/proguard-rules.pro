@@ -11,6 +11,10 @@
 -keepattributes Signature
 -keep class com.google.gson.** { *; }
 -keep class com.openclaw.assistant.api.** { *; }
+# UpdateChecker uses Gson to deserialize GitHub API response.
+# Without this rule, R8 renames GithubRelease fields in release builds,
+# causing Gson deserialization to fail silently and return null.
+-keep class com.openclaw.assistant.utils.GithubRelease { *; }
 
 
 # Google Error Prone Annotations
@@ -32,3 +36,17 @@
 # Markdown renderer (JetBrains markdown parser)
 -keep class org.intellij.markdown.** { *; }
 -dontwarn org.intellij.markdown.**
+
+# dnsjava — uses Java SE / Sun APIs not available on Android
+-dontwarn javax.naming.**
+-dontwarn sun.net.spi.nameservice.**
+-dontwarn lombok.**
+-dontwarn org.slf4j.impl.**
+-dontwarn org.xbill.DNS.spi.**
+-keep class org.xbill.DNS.** { *; }
+
+# BouncyCastle — required for BKS KeyStore provider registration.
+# Without these rules, R8 strips the security provider registration code,
+# causing java.security.KeyStoreException: BKS not found at runtime.
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.bouncycastle.**
