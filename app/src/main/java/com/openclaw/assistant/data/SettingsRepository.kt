@@ -23,12 +23,12 @@ class SettingsRepository(context: Context) {
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 
-    // Webhook URL (required)
-    var webhookUrl: String
-        get() = prefs.getString(KEY_WEBHOOK_URL, "") ?: ""
+    // HTTP Server URL (required)
+    var httpUrl: String
+        get() = prefs.getString(KEY_HTTP_URL, "") ?: ""
         set(value) {
-            if (value != webhookUrl) {
-                prefs.edit().putString(KEY_WEBHOOK_URL, value).apply()
+            if (value != httpUrl) {
+                prefs.edit().putString(KEY_HTTP_URL, value).apply()
                 isVerified = false
             }
         }
@@ -141,17 +141,32 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_IS_VERIFIED, false)
         set(value) = prefs.edit().putBoolean(KEY_IS_VERIFIED, value).apply()
 
+    // Has completed initial setup guide
+    var hasCompletedSetup: Boolean
+        get() = prefs.getBoolean(KEY_HAS_COMPLETED_SETUP, false)
+        set(value) = prefs.edit().putBoolean(KEY_HAS_COMPLETED_SETUP, value).apply()
+
     // Default Agent ID
     var defaultAgentId: String
         get() = prefs.getString(KEY_DEFAULT_AGENT_ID, "main") ?: "main"
         set(value) = prefs.edit().putString(KEY_DEFAULT_AGENT_ID, value).apply()
+
+    // Use NodeRuntime-backed chat pipeline (chat.send / chat history from gateway)
+    var useNodeChat: Boolean
+        get() = prefs.getBoolean(KEY_USE_NODE_CHAT, false)
+        set(value) = prefs.edit().putBoolean(KEY_USE_NODE_CHAT, value).apply()
+
+    // Connection Type (Gateway vs Legacy)
+    var connectionType: String
+        get() = prefs.getString(KEY_CONNECTION_TYPE, CONNECTION_TYPE_GATEWAY) ?: CONNECTION_TYPE_GATEWAY
+        set(value) = prefs.edit().putString(KEY_CONNECTION_TYPE, value).apply()
 
     /**
      * Get the chat completions URL.
      * Supports both base URL (http://server) and full path (http://server/v1/chat/completions).
      */
     fun getChatCompletionsUrl(): String {
-        val url = webhookUrl.trim().trimEnd('/')
+        val url = httpUrl.trim().trimEnd('/')
         if (url.isBlank()) return ""
         return if (url.contains("/v1/")) url
         else "$url/v1/chat/completions"
@@ -162,14 +177,14 @@ class SettingsRepository(context: Context) {
      * Extracts base from full path URLs, or returns as-is for base URLs.
      */
     fun getBaseUrl(): String {
-        val url = webhookUrl.trimEnd('/')
+        val url = httpUrl.trimEnd('/')
         val idx = url.indexOf("/v1/")
         return if (idx > 0) url.substring(0, idx) else url
     }
 
     // Check if configured
     fun isConfigured(): Boolean {
-        return webhookUrl.isNotBlank() && isVerified
+        return httpUrl.isNotBlank() && isVerified
     }
 
     // Generate new session ID
@@ -184,7 +199,7 @@ class SettingsRepository(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "openclaw_secure_prefs"
-        private const val KEY_WEBHOOK_URL = "webhook_url"
+        private const val KEY_HTTP_URL = "webhook_url"
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_SESSION_ID = "session_id"
         private const val KEY_HOTWORD_ENABLED = "hotword_enabled"
@@ -198,9 +213,12 @@ class SettingsRepository(context: Context) {
         private const val KEY_TTS_ENGINE = "tts_engine"
         private const val KEY_GATEWAY_PORT = "gateway_port"
         private const val KEY_DEFAULT_AGENT_ID = "default_agent_id"
+        private const val KEY_USE_NODE_CHAT = "use_node_chat"
+        private const val KEY_CONNECTION_TYPE = "connection_type"
         private const val KEY_SPEECH_SILENCE_TIMEOUT = "speech_silence_timeout"
         private const val KEY_THINKING_SOUND_ENABLED = "thinking_sound_enabled"
         private const val KEY_SPEECH_LANGUAGE = "speech_language"
+        private const val KEY_HAS_COMPLETED_SETUP = "has_completed_setup"
 
         // Wake word presets
         const val WAKE_WORD_OPEN_CLAW = "open_claw"
@@ -208,6 +226,9 @@ class SettingsRepository(context: Context) {
         const val WAKE_WORD_JARVIS = "jarvis"
         const val WAKE_WORD_COMPUTER = "computer"
         const val WAKE_WORD_CUSTOM = "custom"
+        
+        const val CONNECTION_TYPE_GATEWAY = "gateway"
+        const val CONNECTION_TYPE_HTTP = "http"
         
         const val GOOGLE_TTS_PACKAGE = "com.google.android.tts"
 

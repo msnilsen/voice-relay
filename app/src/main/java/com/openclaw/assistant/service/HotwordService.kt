@@ -128,6 +128,14 @@ class HotwordService : Service(), VoskRecognitionListener {
                     getSharedPreferences("hotword_prefs", Context.MODE_PRIVATE)
                         .edit().putBoolean("vosk_unsupported", true).apply()
                     // Don't resume - device doesn't support Vosk
+                } else if (throwable is RuntimeException && throwable.message == "error reading audio buffer") {
+                    // Transient mic unavailability - handled by recovery logic, no need to report
+                    speechService = null
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        if (!isSessionActive) {
+                            resumeHotwordDetection()
+                        }
+                    }
                 } else {
                     FirebaseCrashlytics.getInstance().recordException(throwable)
                     speechService = null
