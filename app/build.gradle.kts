@@ -101,6 +101,19 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
     }
+    
+    // Product Flavors for VOICEVOX support
+    flavorDimensions += "voicevox"
+    productFlavors {
+        create("standard") {
+            dimension = "voicevox"
+            buildConfigField("boolean", "VOICEVOX_ENABLED", "false")
+        }
+        create("full") {
+            dimension = "voicevox"
+            buildConfigField("boolean", "VOICEVOX_ENABLED", "true")
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -181,6 +194,12 @@ dependencies {
 
     // Vosk
     implementation("com.alphacephei:vosk-android:0.3.75")
+    
+    // VOICEVOX (full flavor only)
+    // libvoicevox_onnxruntime.so (VoiceVox custom ORT v1.17.3) is bundled in
+    // app/src/full/jniLibs/arm64-v8a/. The standard Microsoft ORT does not support
+    // the "vv-bin" model format required by voicevox_core 0.16.4.
+    add("fullImplementation", files("libs/voicevoxcore-android-0.16.4.aar"))
 
     // Tink (Crypto)
     implementation("com.google.crypto.tink:tink-android:1.10.0")

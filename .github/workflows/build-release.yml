@@ -51,8 +51,8 @@ jobs:
           echo "keyAlias=$KEY_ALIAS" >> local.properties
           echo "keyPassword=$KEY_PASSWORD" >> local.properties
 
-      - name: Build Release Artifacts
-        run: ./gradlew assembleRelease bundleRelease
+      - name: Build Release Artifacts (Standard & Full)
+        run: ./gradlew assembleStandardRelease assembleFullRelease bundleStandardRelease bundleFullRelease
 
       - name: Get commit message
         id: commit
@@ -65,8 +65,10 @@ jobs:
       - name: Rename Artifacts
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          mv app/build/outputs/apk/release/*.apk app/build/outputs/apk/release/OpenClawAssistant-${{ github.ref_name }}.apk
-          mv app/build/outputs/bundle/release/*.aab app/build/outputs/bundle/release/OpenClawAssistant-${{ github.ref_name }}.aab
+          mv app/build/outputs/apk/standard/release/*.apk app/build/outputs/apk/standard/release/OpenClawAssistant-standard-${{ github.ref_name }}.apk
+          mv app/build/outputs/apk/full/release/*.apk app/build/outputs/apk/full/release/OpenClawAssistant-full-${{ github.ref_name }}.apk
+          mv app/build/outputs/bundle/standard/release/*.aab app/build/outputs/bundle/standard/release/OpenClawAssistant-standard-${{ github.ref_name }}.aab
+          mv app/build/outputs/bundle/full/release/*.aab app/build/outputs/bundle/full/release/OpenClawAssistant-full-${{ github.ref_name }}.aab
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -75,16 +77,27 @@ jobs:
           name: Release ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            app/build/outputs/apk/release/OpenClawAssistant-${{ github.ref_name }}.apk
-            app/build/outputs/bundle/release/OpenClawAssistant-${{ github.ref_name }}.aab
+            app/build/outputs/apk/standard/release/OpenClawAssistant-standard-${{ github.ref_name }}.apk
+            app/build/outputs/apk/full/release/OpenClawAssistant-full-${{ github.ref_name }}.apk
+            app/build/outputs/bundle/standard/release/OpenClawAssistant-standard-${{ github.ref_name }}.aab
+            app/build/outputs/bundle/full/release/OpenClawAssistant-full-${{ github.ref_name }}.aab
           draft: false
           prerelease: false
 
-      - name: Upload Artifacts (Non-tag push)
+      - name: Upload Standard Artifacts (Non-tag push)
         uses: actions/upload-artifact@v4
         if: "!startsWith(github.ref, 'refs/tags/')"
         with:
-          name: release-artifacts
+          name: release-artifacts-standard
           path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/bundle/release/*.aab
+            app/build/outputs/apk/standard/release/*.apk
+            app/build/outputs/bundle/standard/release/*.aab
+
+      - name: Upload Full Artifacts (Non-tag push)
+        uses: actions/upload-artifact@v4
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        with:
+          name: release-artifacts-full
+          path: |
+            app/build/outputs/apk/full/release/*.apk
+            app/build/outputs/bundle/full/release/*.aab

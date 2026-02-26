@@ -50,3 +50,8 @@
 # causing java.security.KeyStoreException: BKS not found at runtime.
 -keep class org.bouncycastle.** { *; }
 -dontwarn org.bouncycastle.**
+
+# VOICEVOX Core
+-keep class jp.hiroshiba.voicevoxcore.** { *; }
+-dontwarn jp.hiroshiba.voicevoxcore.**
+-dontwarn jakarta.annotation.**

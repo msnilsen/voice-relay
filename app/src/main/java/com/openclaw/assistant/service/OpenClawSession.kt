@@ -110,7 +110,8 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
 
         speechManager = SpeechRecognizerManager(context)
         ttsManager = TTSManager(context)
-        Log.e(TAG, "Session onCreate completed")
+        val initialized = ttsManager.initializeCurrentProvider()
+        Log.e(TAG, "Session TTS: initialized=$initialized ready=${ttsManager.isReady()} error=${ttsManager.getErrorMessage()}")
     }
 
     private val lifecycleRegistry = androidx.lifecycle.LifecycleRegistry(this)
@@ -475,7 +476,15 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
 
         speakingJob = scope.launch {
             try {
-                val success = ttsManager.speak(cleanText)
+                val maxLen = minOf(TTSUtils.getMaxInputLength(null), 1000)
+                val chunks = TTSUtils.splitTextForTTS(cleanText, maxLen)
+                var success = chunks.isNotEmpty()
+                for (chunk in chunks) {
+                    if (!ttsManager.speak(chunk)) {
+                        success = false
+                        break
+                    }
+                }
 
                 // Abandon audio focus after TTS completes
                 abandonAudioFocus()

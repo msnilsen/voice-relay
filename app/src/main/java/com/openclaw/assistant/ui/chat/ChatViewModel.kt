@@ -2,8 +2,6 @@ package com.openclaw.assistant.ui.chat
 
 import android.app.Application
 import android.speech.SpeechRecognizer
-import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,17 +12,17 @@ import com.openclaw.assistant.chat.ChatMarkdownPreprocessor
 import com.openclaw.assistant.gateway.AgentInfo
 import com.openclaw.assistant.speech.SpeechRecognizerManager
 import com.openclaw.assistant.speech.SpeechResult
+import com.openclaw.assistant.speech.TTSManager
+import com.openclaw.assistant.speech.TTSState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import java.util.UUID
-import kotlin.coroutines.resume
 
 private const val TAG = "ChatViewModel"
 
@@ -382,17 +380,22 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // TTS will be set from Activity
-    private var tts: TextToSpeech? = null
-    private var isTTSReady = false
+    // TTSManager will be initialized from Activity
+    private var ttsManager: TTSManager? = null
 
     /**
-     * Set TTS from Activity
+     * Initialize TTSManager from Activity
      */
-    fun setTTS(textToSpeech: TextToSpeech) {
-        Log.e(TAG, "setTTS called")
-        tts = textToSpeech
-        isTTSReady = true
+    fun initializeTTS() {
+        Log.d(TAG, "initializeTTS called (ttsType=${settings.ttsType})")
+        try {
+            ttsManager = TTSManager(getApplication())
+            val initialized = ttsManager?.initializeCurrentProvider() ?: false
+            Log.d(TAG, "TTS initialized: $initialized, ready=${ttsManager?.isReady()}, error=${ttsManager?.getErrorMessage()}")
+        } catch (e: Exception) {
+            Log.e(TAG, "initializeTTS failed", e)
+            ttsManager = null
+        }
     }
 
     /**
@@ -555,7 +558,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         listeningJob?.cancel()
 
         // Stop TTS if speaking
-        tts?.stop()
+        ttsManager?.stop()
 
         listeningJob = viewModelScope.launch {
             val startTime = System.currentTimeMillis()
@@ -650,10 +653,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(isSpeaking = true) }
 
             try {
-                val success = if (isTTSReady && tts != null) {
-                    speakWithTTS(cleanText)
+                val manager = ttsManager
+                val success = if (manager != null && manager.isReady()) {
+                    speakWithTTSManager(manager, cleanText)
                 } else {
-                    Log.e(TAG, "TTS not ready, skipping speech")
+                    if (manager == null) {
+                        Log.e(TAG, "TTS: ttsManager is null")
+                    } else {
+                        Log.e(TAG, "TTS: not ready – type=${settings.ttsType} error=${manager.getErrorMessage()}")
+                    }
                     false
                 }
 
@@ -675,23 +683,23 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 Log.e(TAG, "TTS speak error", e)
                 _uiState.update { it.copy(isSpeaking = false) }
-                tts?.stop()
+                ttsManager?.stop()
                 releaseWakeLock()
                 sendResumeBroadcast()
             }
         }
     }
 
-    private suspend fun speakWithTTS(text: String): Boolean {
+    private suspend fun speakWithTTSManager(manager: TTSManager, text: String): Boolean {
         // Query the engine's actual max input length
-        val engineMaxLen = com.openclaw.assistant.speech.TTSUtils.getMaxInputLength(tts)
+        val engineMaxLen = com.openclaw.assistant.speech.TTSUtils.getMaxInputLength(null)
         // Further limit to 1000 for stability and consistent timeout behavior
         val maxLen = minOf(engineMaxLen, 1000)
         val chunks = com.openclaw.assistant.speech.TTSUtils.splitTextForTTS(text, maxLen)
         Log.d(TAG, "TTS splitting text (${text.length} chars) into ${chunks.size} chunks (targetMaxLen=$maxLen, engineMaxLen=$engineMaxLen)")
 
         for ((index, chunk) in chunks.withIndex()) {
-            val success = speakSingleChunk(chunk, index == 0)
+            val success = speakSingleChunkWithManager(manager, chunk)
             if (!success) {
                 Log.e(TAG, "TTS chunk $index failed, aborting remaining chunks")
                 return false
@@ -700,104 +708,40 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         return true
     }
 
-    private suspend fun speakSingleChunk(text: String, isFirst: Boolean): Boolean {
-        // Scale timeout based on text length (minimum 30s, ~150ms per character to accommodate Japanese)
-        val timeoutMs = (30_000L + (text.length * 150L)).coerceAtMost(600_000L) // Max 10 mins
-        val callbackResult = withTimeoutOrNull(timeoutMs) {
-            suspendCancellableCoroutine { continuation ->
-                val utteranceId = UUID.randomUUID().toString()
-                val started = java.util.concurrent.atomic.AtomicBoolean(false)
-
-                val listener = object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {
-                        Log.d(TAG, "TTS onStart")
-                        started.set(true)
+    private suspend fun speakSingleChunkWithManager(manager: TTSManager, text: String): Boolean {
+        var completed = false
+        var error = false
+        
+        try {
+            manager.speakWithProgress(text).collect { state ->
+                when (state) {
+                    is TTSState.Preparing -> {
+                        Log.d(TAG, "TTS Preparing")
                     }
-
-                    override fun onDone(utteranceId: String?) {
-                        Log.d(TAG, "TTS onDone")
-                        if (continuation.isActive) {
-                            continuation.resume(true)
-                        }
+                    is TTSState.Speaking -> {
+                        Log.d(TAG, "TTS Speaking")
                     }
-
-                    override fun onStop(utteranceId: String?, interrupted: Boolean) {
-                        Log.d(TAG, "TTS onStop, interrupted=$interrupted")
-                        if (continuation.isActive) {
-                            continuation.resume(false)
-                        }
+                    is TTSState.Done -> {
+                        Log.d(TAG, "TTS Done")
+                        completed = true
                     }
-
-                    @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) {
-                        Log.e(TAG, "TTS onError (deprecated)")
-                        if (continuation.isActive) {
-                            continuation.resume(false)
-                        }
+                    is TTSState.Error -> {
+                        Log.e(TAG, "TTS Error: ${state.message}")
+                        error = true
                     }
-
-                    override fun onError(utteranceId: String?, errorCode: Int) {
-                        Log.e(TAG, "TTS onError: $errorCode")
-                        if (continuation.isActive) {
-                            continuation.resume(false)
-                        }
-                    }
-                }
-
-                tts?.setOnUtteranceProgressListener(listener)
-                val queueMode = if (isFirst) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-                val result = tts?.speak(text, queueMode, null, utteranceId)
-                Log.d(TAG, "TTS speak result=$result, text length=${text.length}")
-
-                if (result != TextToSpeech.SUCCESS) {
-                    Log.e(TAG, "TTS speak failed immediately with result=$result")
-                    if (continuation.isActive) {
-                        continuation.resume(false)
-                    }
-                } else {
-                    // Polling fallback: only start polling AFTER onStart fires,
-                    // to avoid false-positive when engine hasn't begun speaking yet
-                    viewModelScope.launch {
-                        // Wait for onStart (up to 10s)
-                        var waitedMs = 0L
-                        while (!started.get() && continuation.isActive && waitedMs < 10_000L) {
-                            delay(200)
-                            waitedMs += 200
-                        }
-                        if (!started.get() || !continuation.isActive) return@launch
-                        // Now poll isSpeaking - only treat false as "done" after speech started
-                        delay(1000)
-                        while (continuation.isActive) {
-                            val speaking = tts?.isSpeaking ?: false
-                            if (!speaking) {
-                                Log.w(TAG, "TTS poll detected speech finished (callback missed)")
-                                if (continuation.isActive) {
-                                    continuation.resume(true)
-                                }
-                                break
-                            }
-                            delay(500)
-                        }
-                    }
-                }
-
-                continuation.invokeOnCancellation {
-                    tts?.stop()
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "TTS flow error", e)
+            error = true
         }
-
-        if (callbackResult == null) {
-            Log.w(TAG, "TTS chunk timed out, forcing stop")
-            tts?.stop()
-            return false
-        }
-        return callbackResult
+        
+        return completed && !error
     }
 
     fun stopSpeaking() {
         lastInputWasVoice = false // Stop loop if manually stopped
-        tts?.stop()
+        ttsManager?.stop()
         speakingJob?.cancel()
         speakingJob = null
         _uiState.update { it.copy(isSpeaking = false) }
@@ -806,7 +750,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun interruptAndListen() {
-        tts?.stop()
+        ttsManager?.stop()
         speakingJob?.cancel()
         speakingJob = null
         _uiState.update { it.copy(isSpeaking = false) }
@@ -863,7 +807,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         toneGenerator.release()
         releaseWakeLock()
         sendResumeBroadcast()
-        // Don't shutdown TTS here - Activity owns it
+        // TTSManager lifecycle is managed by Activity
     }
 
     private fun sendPauseBroadcast() {

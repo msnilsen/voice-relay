@@ -7,6 +7,9 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -44,6 +47,77 @@ import com.openclaw.assistant.utils.SystemInfoProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+
+// ElevenLabs Voice Options
+object ElevenLabsVoiceOptions {
+    data class VoiceOption(val id: String, val name: String, val description: String)
+    
+    // Actual ElevenLabs Voice IDs from API
+    val VOICES = listOf(
+        VoiceOption("", "デフォルト（API設定依存）", "API設定で指定されたデフォルト音声を使用"),
+        VoiceOption("pNInz6obpgDQGcFmaJgB", "Adam", "力強い男性"),
+        VoiceOption("EXAVITQu4vr4xnSDxMaL", "Bella", "明るいプロフェッショナル女性"),
+        VoiceOption("nPczCjzI2devNBz1zQrb", "Brian", "深みのある安心感のある男性"),
+        VoiceOption("IKne3meq5aSn9XLyUdCD", "Charlie", "低めで自信に満ちた男性"),
+        VoiceOption("SOYHLrjzK2X1ezoPC6cr", "Harry", "激しい戦士系男性"),
+        VoiceOption("XrExE9yKIg1WjnnlVkGX", "Matilda", "知識豊富なプロフェッショナル女性"),
+        VoiceOption("cgSgspJ2msm6clMCkdW9", "Jessica", "明るく温かみのある女性"),
+        VoiceOption("cjVigY5qzO86Huf0OWal", "Eric", "滑らかで信頼できる男性"),
+        VoiceOption("EXAVITQu4vr4xnSDxMaL", "Sarah", "成熟した自信に満ちた女性"),
+        VoiceOption("FGY2WhTYpPnrIDTdsKH5", "Laura", "熱心で独特な女性"),
+        VoiceOption("JBFqnCBsd6RMkjVDRZzb", "George", "温かみのある物語り男性"),
+        VoiceOption("CwhRBWXzGAHq8TQ4Fs17", "Roger", "落ち着いたカジュアル男性"),
+        VoiceOption("SAz9YHcvj6GT2YYXdXww", "River", "リラックスした中性"),
+        VoiceOption("bIHbv24MWmeRgasZH58o", "Will", "楽観的でリラックスした男性"),
+        VoiceOption("onwK4e9ZLuTAKqWW03F9", "Daniel", "安定した放送系男性"),
+        VoiceOption("pFZfaz1YfMItY4IjZDke", "Lily", "ベルベットのような女優系"),
+        VoiceOption("pqHfZKP75CvOlQylNhV4", "Bill", "賢明で成熟した男性"),
+        VoiceOption("Xb7hH8MSUJpSbSDYk0k2", "Alice", "明確で教育的な女性"),
+        VoiceOption("TX3AE5NoiEX1lRR4gU5H", "Liam", "エネルギッシュSNSクリエイター"),
+        VoiceOption("N2lVS1w4EtoT3dr4eOWO", "Callum", "ハスキーなトリックスター"),
+        VoiceOption("iP95p4xoKVk53GoZ742B", "Chris", "魅力的で親しみやすい男性")
+    )
+}
+
+// VoiceVox Character Data
+object VoiceVoxCharacters {
+    data class Character(val id: Int, val name: String, val styleName: String, val vvmFileName: String, val sizeBytes: Long)
+    
+    val CHARACTERS = listOf(
+        Character(0, "四国めたん", "あまあま", "metan_amama.vvm", 120_000_000),
+        Character(1, "四国めたん", "ノーマル", "metan_normal.vvm", 120_000_000),
+        Character(2, "四国めたん", "セクシー", "metan_sexy.vvm", 120_000_000),
+        Character(3, "四国めたん", "ツンツン", "metan_tsuntsun.vvm", 120_000_000),
+        Character(4, "四国めたん", "ささやき", "metan_sasayaki.vvm", 60_000_000),
+        Character(6, "ずんだもん", "あまあま", "zundamon_amama.vvm", 120_000_000),
+        Character(7, "ずんだもん", "ノーマル", "zundamon_normal.vvm", 120_000_000),
+        Character(8, "ずんだもん", "セクシー", "zundamon_sexy.vvm", 120_000_000),
+        Character(9, "ずんだもん", "ツンツン", "zundamon_tsuntsun.vvm", 120_000_000),
+        Character(10, "ずんだもん", "ささやき", "zundamon_sasayaki.vvm", 60_000_000),
+        Character(11, "ずんだもん", "ヒソヒソ", "zundamon_hisohiso.vvm", 60_000_000),
+        Character(12, "春日部つむぎ", "ノーマル", "kasukabe_normal.vvm", 120_000_000),
+        Character(14, "雨晴はう", "ノーマル", "amehare_normal.vvm", 120_000_000),
+        Character(15, "波音リツ", "ノーマル", "namine_normal.vvm", 120_000_000),
+        Character(16, "玄野武宏", "ノーマル", "kurono_normal.vvm", 120_000_000),
+        Character(17, "玄野武宏", "喜び", "kurono_yorokobi.vvm", 120_000_000),
+        Character(18, "玄野武宏", "ツンギレ", "kurono_tsungire.vvm", 120_000_000),
+        Character(19, "玄野武宏", "悲しみ", "kurono_kanashimi.vvm", 120_000_000),
+        Character(20, "白上虎太郎", "ふつう", "shirakami_futsu.vvm", 120_000_000),
+        Character(21, "白上虎太郎", "わーい", "shirakami_wai.vvm", 120_000_000),
+        Character(22, "白上虎太郎", "びくびく", "shirakami_bikubiku.vvm", 120_000_000),
+        Character(23, "白上虎太郎", "おこ", "shirakami_oko.vvm", 120_000_000),
+        Character(24, "白上虎太郎", "びえーん", "shirakami_bieen.vvm", 120_000_000),
+        Character(27, "青山龍星", "ノーマル", "aoyama_normal.vvm", 120_000_000),
+        Character(28, "青山龍星", "熱血", "aoyama_nekketsu.vvm", 120_000_000),
+        Character(29, "青山龍星", "不機嫌", "aoyama_fukigen.vvm", 120_000_000),
+        Character(30, "青山龍星", "喜び", "aoyama_yorokobi.vvm", 120_000_000),
+        Character(31, "青山龍星", "悲しみ", "aoyama_kanashimi.vvm", 120_000_000),
+        Character(32, "青山龍星", "囁き", "aoyama_sasayaki.vvm", 60_000_000)
+    )
+    
+    fun getById(id: Int): Character? = CHARACTERS.find { it.id == id }
+    fun getDisplayName(id: Int): String = getById(id)?.let { "${it.name}（${it.styleName}）" } ?: "Unknown"
+}
 
 class SettingsActivity : ComponentActivity() {
 
@@ -115,6 +189,27 @@ fun SettingsScreen(
 
     // TTS Engines
     var ttsEngine by rememberSaveable { mutableStateOf(settings.ttsEngine) }
+    
+    // TTS Settings
+    var ttsType by rememberSaveable { mutableStateOf(settings.ttsType) }
+    var showTtsTypeMenu by rememberSaveable { mutableStateOf(false) }
+    
+    // ElevenLabs
+    var elevenLabsApiKey by rememberSaveable { mutableStateOf(settings.elevenLabsApiKey) }
+    var elevenLabsVoiceId by rememberSaveable { mutableStateOf(settings.elevenLabsVoiceId) }
+    var elevenLabsSpeed by rememberSaveable { mutableStateOf(settings.elevenLabsSpeed) }
+    var showElevenLabsApiKey by rememberSaveable { mutableStateOf(false) }
+    
+    // OpenAI
+    var openAiApiKey by rememberSaveable { mutableStateOf(settings.openAiApiKey) }
+    var openAiVoice by rememberSaveable { mutableStateOf(settings.openAiVoice) }
+    var showOpenAiApiKey by rememberSaveable { mutableStateOf(false) }
+    
+    // VOICEVOX
+    var voiceVoxStyleId by rememberSaveable { mutableStateOf(settings.voiceVoxStyleId) }
+    var voiceVoxTermsAccepted by rememberSaveable { mutableStateOf(settings.voiceVoxTermsAccepted) }
+    var showVoiceVoxSetup by rememberSaveable { mutableStateOf(false) }
+    
     var availableEngines by remember { mutableStateOf<List<com.openclaw.assistant.speech.TTSEngineUtils.EngineInfo>>(emptyList()) }
     var showEngineMenu by rememberSaveable { mutableStateOf(false) }
     var showNodeToken by rememberSaveable { mutableStateOf(false) }
@@ -240,6 +335,14 @@ fun SettingsScreen(
                             settings.ttsEnabled = ttsEnabled
                             settings.ttsSpeed = ttsSpeed
                             settings.ttsEngine = ttsEngine
+                            settings.ttsType = ttsType
+                            settings.elevenLabsApiKey = elevenLabsApiKey
+                            settings.elevenLabsVoiceId = elevenLabsVoiceId
+                            settings.elevenLabsSpeed = elevenLabsSpeed
+                            settings.openAiApiKey = openAiApiKey
+                            settings.openAiVoice = openAiVoice
+                            settings.voiceVoxStyleId = voiceVoxStyleId
+                            settings.voiceVoxTermsAccepted = voiceVoxTermsAccepted
                             settings.continuousMode = continuousMode
                             settings.resumeLatestSession = resumeLatestSession
                             settings.wakeWordPreset = wakeWordPreset
@@ -770,52 +873,80 @@ fun SettingsScreen(
                     if (ttsEnabled) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
 
-                        // TTS Engine Selection
+                        // TTS Provider Selection
                         ExposedDropdownMenuBox(
-                            expanded = showEngineMenu,
-                            onExpandedChange = { showEngineMenu = it }
+                            expanded = showTtsTypeMenu,
+                            onExpandedChange = { showTtsTypeMenu = it }
                         ) {
-                            val currentLabel = if (ttsEngine.isEmpty()) {
-                                stringResource(R.string.tts_engine_auto)
-                            } else {
-                                availableEngines.find { it.name == ttsEngine }?.label ?: ttsEngine
+                            val ttsTypeLabel = when (ttsType) {
+                                SettingsRepository.TTS_TYPE_LOCAL -> "システムTTS"
+                                SettingsRepository.TTS_TYPE_ELEVENLABS -> "ElevenLabs"
+                                SettingsRepository.TTS_TYPE_OPENAI -> "OpenAI"
+                                SettingsRepository.TTS_TYPE_VOICEVOX -> "VOICEVOX"
+                                else -> "システムTTS"
                             }
-
+                            
                             OutlinedTextField(
-                                value = currentLabel,
+                                value = ttsTypeLabel,
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text(stringResource(R.string.tts_engine_label)) },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showEngineMenu) },
+                                label = { Text("TTS種別") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showTtsTypeMenu) },
                                 modifier = Modifier.fillMaxWidth().menuAnchor()
                             )
 
                             ExposedDropdownMenu(
-                                expanded = showEngineMenu,
-                                onDismissRequest = { showEngineMenu = false }
+                                expanded = showTtsTypeMenu,
+                                onDismissRequest = { showTtsTypeMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.tts_engine_auto)) },
+                                    text = { Text("システムTTS") },
                                     onClick = {
-                                        ttsEngine = ""
-                                        showEngineMenu = false
+                                        ttsType = SettingsRepository.TTS_TYPE_LOCAL
+                                        showTtsTypeMenu = false
                                     },
                                     leadingIcon = {
-                                        if (ttsEngine.isEmpty()) {
+                                        if (ttsType == SettingsRepository.TTS_TYPE_LOCAL) {
                                             Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                         }
                                     }
                                 )
-
-                                availableEngines.forEach { engine ->
+                                DropdownMenuItem(
+                                    text = { Text("ElevenLabs") },
+                                    onClick = {
+                                        ttsType = SettingsRepository.TTS_TYPE_ELEVENLABS
+                                        showTtsTypeMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (ttsType == SettingsRepository.TTS_TYPE_ELEVENLABS) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("OpenAI") },
+                                    onClick = {
+                                        ttsType = SettingsRepository.TTS_TYPE_OPENAI
+                                        showTtsTypeMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (ttsType == SettingsRepository.TTS_TYPE_OPENAI) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                )
+                                if (BuildConfig.VOICEVOX_ENABLED) {
                                     DropdownMenuItem(
-                                        text = { Text(engine.label) },
+                                        text = { Text("VOICEVOX") },
                                         onClick = {
-                                            ttsEngine = engine.name
-                                            showEngineMenu = false
+                                            ttsType = SettingsRepository.TTS_TYPE_VOICEVOX
+                                            showTtsTypeMenu = false
+                                            if (!voiceVoxTermsAccepted) {
+                                                showVoiceVoxSetup = true
+                                            }
                                         },
                                         leadingIcon = {
-                                            if (ttsEngine == engine.name) {
+                                            if (ttsType == SettingsRepository.TTS_TYPE_VOICEVOX) {
                                                 Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                                             }
                                         }
@@ -824,17 +955,109 @@ fun SettingsScreen(
                             }
                         }
 
-                        // Voice Speed (only if Google TTS)
-                        val effectiveEngine = if (ttsEngine.isEmpty()) {
-                            com.openclaw.assistant.speech.TTSEngineUtils.getDefaultEngine(context)
-                        } else {
-                            ttsEngine
+                        // Provider-specific settings
+                        when (ttsType) {
+                            SettingsRepository.TTS_TYPE_ELEVENLABS -> {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                ElevenLabsSettingsCard(
+                                    apiKey = elevenLabsApiKey,
+                                    onApiKeyChange = { elevenLabsApiKey = it },
+                                    showApiKey = showElevenLabsApiKey,
+                                    onShowApiKeyChange = { showElevenLabsApiKey = it },
+                                    voiceId = elevenLabsVoiceId,
+                                    onVoiceIdChange = { elevenLabsVoiceId = it },
+                                    speed = elevenLabsSpeed,
+                                    onSpeedChange = { elevenLabsSpeed = it }
+                                )
+                            }
+                            SettingsRepository.TTS_TYPE_OPENAI -> {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                OpenAISettingsCard(
+                                    apiKey = openAiApiKey,
+                                    onApiKeyChange = { openAiApiKey = it },
+                                    showApiKey = showOpenAiApiKey,
+                                    onShowApiKeyChange = { showOpenAiApiKey = it },
+                                    voice = openAiVoice,
+                                    onVoiceChange = { openAiVoice = it }
+                                )
+                            }
+                            SettingsRepository.TTS_TYPE_VOICEVOX -> {
+                                if (BuildConfig.VOICEVOX_ENABLED) {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    VoiceVoxSettingsCard(
+                                        styleId = voiceVoxStyleId,
+                                        onStyleIdChange = { voiceVoxStyleId = it },
+                                        termsAccepted = voiceVoxTermsAccepted,
+                                        onTermsAcceptedChange = { voiceVoxTermsAccepted = it },
+                                        onShowSetup = { showVoiceVoxSetup = true },
+                                        onSetupComplete = { 
+                                            // Refresh will happen when dialog closes and recomposition occurs
+                                        }
+                                    )
+                                }
+                            }
+                            else -> {
+                                // System TTS - show engine selection
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                ExposedDropdownMenuBox(
+                                    expanded = showEngineMenu,
+                                    onExpandedChange = { showEngineMenu = it }
+                                ) {
+                                    val currentLabel = if (ttsEngine.isEmpty()) {
+                                        stringResource(R.string.tts_engine_auto)
+                                    } else {
+                                        availableEngines.find { it.name == ttsEngine }?.label ?: ttsEngine
+                                    }
+
+                                    OutlinedTextField(
+                                        value = currentLabel,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text(stringResource(R.string.tts_engine_label)) },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showEngineMenu) },
+                                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                                    )
+
+                                    ExposedDropdownMenu(
+                                        expanded = showEngineMenu,
+                                        onDismissRequest = { showEngineMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.tts_engine_auto)) },
+                                            onClick = {
+                                                ttsEngine = ""
+                                                showEngineMenu = false
+                                            },
+                                            leadingIcon = {
+                                                if (ttsEngine.isEmpty()) {
+                                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                                }
+                                            }
+                                        )
+
+                                        availableEngines.forEach { engine ->
+                                            DropdownMenuItem(
+                                                text = { Text(engine.label) },
+                                                onClick = {
+                                                    ttsEngine = engine.name
+                                                    showEngineMenu = false
+                                                },
+                                                leadingIcon = {
+                                                    if (ttsEngine == engine.name) {
+                                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
-                        val isGoogleTTS = effectiveEngine == SettingsRepository.GOOGLE_TTS_PACKAGE
 
-                        if (isGoogleTTS) {
+                        // Voice Speed (All providers except ElevenLabs which has its own speed setting)
+                        if (ttsType != SettingsRepository.TTS_TYPE_ELEVENLABS) {
                             Spacer(modifier = Modifier.height(16.dp))
-
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -847,7 +1070,12 @@ fun SettingsScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                             }
-
+                            Text(
+                                text = stringResource(R.string.voice_speed_range, "0.5", "3.0"),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
                             Slider(
                                 value = ttsSpeed,
                                 onValueChange = { ttsSpeed = it },
@@ -1126,6 +1354,17 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
+
+    // VoiceVox Setup Dialog
+    if (showVoiceVoxSetup) {
+        VoiceVoxSetupDialog(
+            onDismiss = { showVoiceVoxSetup = false },
+            onComplete = { 
+                voiceVoxTermsAccepted = true
+                showVoiceVoxSetup = false
+            }
+        )
+    }
 }
 
 data class TestResult(
@@ -1152,3 +1391,883 @@ private val FALLBACK_SPEECH_LANGUAGES = listOf(
     "th-TH" to "ไทย",
     "vi-VN" to "Tiếng Việt"
 )
+
+// TTS Provider Settings Cards
+
+@Composable
+fun ElevenLabsSettingsCard(
+    apiKey: String,
+    onApiKeyChange: (String) -> Unit,
+    voiceId: String,
+    onVoiceIdChange: (String) -> Unit,
+    showApiKey: Boolean,
+    onShowApiKeyChange: (Boolean) -> Unit,
+    speed: Float,
+    onSpeedChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Ensure voiceId is never null
+    val safeVoiceId = voiceId ?: ""
+    
+    var usePresetVoice by rememberSaveable { mutableStateOf(safeVoiceId.isEmpty() || ElevenLabsVoiceOptions.VOICES.any { it.id == safeVoiceId }) }
+    var customVoiceId by rememberSaveable { mutableStateOf(if (usePresetVoice) "" else safeVoiceId) }
+    var showVoiceDropdown by rememberSaveable { mutableStateOf(false) }
+    
+    val context = LocalContext.current
+    
+    // Find selected voice name (safely)
+    val selectedVoice: ElevenLabsVoiceOptions.VoiceOption = remember(safeVoiceId) {
+        ElevenLabsVoiceOptions.VOICES.find { it.id == safeVoiceId } 
+            ?: ElevenLabsVoiceOptions.VOICES.firstOrNull()
+            ?: ElevenLabsVoiceOptions.VoiceOption("", "デフォルト", "")
+    }
+    
+    // Ensure we have a valid voice name for display
+    val selectedVoiceName = selectedVoice.name
+    val selectedVoiceDescription = selectedVoice.description
+    
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "ElevenLabs Settings",
+                style = MaterialTheme.typography.titleSmall
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // API Key input with show/hide toggle
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = onApiKeyChange,
+                label = { Text(stringResource(R.string.elevenlabs_api_key_label)) },
+                trailingIcon = {
+                    IconButton(onClick = { onShowApiKeyChange(!showApiKey) }) {
+                        Icon(
+                            if (showApiKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = if (showApiKey) "Hide API Key" else "Show API Key"
+                        )
+                    }
+                },
+                visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            
+            // API Key link button
+            TextButton(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://elevenlabs.io/app/developers/api-keys"))
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                Text(
+                    stringResource(R.string.get_api_key),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Filter chips to toggle between preset and custom voice
+            Text(
+                stringResource(R.string.select_voice),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = usePresetVoice,
+                    onClick = { 
+                        usePresetVoice = true
+                        if (safeVoiceId.isNotEmpty() && ElevenLabsVoiceOptions.VOICES.none { it.id == safeVoiceId }) {
+                            onVoiceIdChange("")
+                        }
+                    },
+                    label = { Text(stringResource(R.string.preset_voice)) }
+                )
+                FilterChip(
+                    selected = !usePresetVoice,
+                    onClick = { 
+                        usePresetVoice = false
+                        if (customVoiceId.isNotEmpty()) {
+                            onVoiceIdChange(customVoiceId)
+                        }
+                    },
+                    label = { Text(stringResource(R.string.custom_voice)) }
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            if (usePresetVoice) {
+                // Preset voice dropdown
+                ExposedDropdownMenuBox(
+                    expanded = showVoiceDropdown,
+                    onExpandedChange = { showVoiceDropdown = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedVoiceName,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.select_voice)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showVoiceDropdown) },
+                        supportingText = { 
+                            if (selectedVoiceDescription.isNotEmpty()) {
+                                Text(selectedVoiceDescription, style = MaterialTheme.typography.bodySmall)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                    )
+                    
+                    ExposedDropdownMenu(
+                        expanded = showVoiceDropdown,
+                        onDismissRequest = { showVoiceDropdown = false }
+                    ) {
+                        ElevenLabsVoiceOptions.VOICES.forEach { voice ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Column {
+                                        Text(voice.name, style = MaterialTheme.typography.bodyMedium)
+                                        if (voice.description.isNotEmpty()) {
+                                            Text(
+                                                voice.description, 
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    onVoiceIdChange(voice.id)
+                                    showVoiceDropdown = false
+                                },
+                                leadingIcon = {
+                                    if (safeVoiceId == voice.id || (safeVoiceId.isEmpty() && voice.id.isEmpty())) {
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Custom Voice ID input
+                OutlinedTextField(
+                    value = customVoiceId,
+                    onValueChange = { 
+                        customVoiceId = it
+                        onVoiceIdChange(it)
+                    },
+                    label = { Text(stringResource(R.string.custom_voice_id)) },
+                    supportingText = { Text(stringResource(R.string.elevenlabs_custom_voice_help)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Speed setting (ElevenLabs API limitation: 0.7 to 1.2)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.voice_speed), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "%.2fx".format(speed),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Text(
+                text = stringResource(R.string.voice_speed_range, "0.70", "1.20"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Slider(
+                value = speed,
+                onValueChange = onSpeedChange,
+                valueRange = 0.7f..1.2f,
+                steps = 4, // 0.7, 0.8, 0.9, 1.0, 1.1, 1.2
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+fun OpenAISettingsCard(
+    apiKey: String,
+    onApiKeyChange: (String) -> Unit,
+    voice: String,
+    onVoiceChange: (String) -> Unit,
+    showApiKey: Boolean,
+    onShowApiKeyChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val voiceOptions = listOf("alloy", "echo", "fable", "onyx", "nova", "shimmer")
+    var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "OpenAI Settings",
+                style = MaterialTheme.typography.titleSmall
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = onApiKeyChange,
+                label = { Text("API Key") },
+                trailingIcon = {
+                    IconButton(onClick = { onShowApiKeyChange(!showApiKey) }) {
+                        Icon(
+                            if (showApiKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = null
+                        )
+                    }
+                },
+                visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            
+            // API Key link button
+            TextButton(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://platform.openai.com/api-keys"))
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                Text(
+                    stringResource(R.string.get_api_key),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = it }
+            ) {
+                OutlinedTextField(
+                    value = voice,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Voice") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    voiceOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.replaceFirstChar { it.uppercase() }) },
+                            onClick = {
+                                onVoiceChange(option)
+                                expanded = false
+                            },
+                            leadingIcon = {
+                                if (voice == option) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun VoiceVoxSettingsCard(
+    styleId: Int,
+    onStyleIdChange: (Int) -> Unit,
+    termsAccepted: Boolean,
+    onTermsAcceptedChange: (Boolean) -> Unit,
+    onShowSetup: () -> Unit,
+    onSetupComplete: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var showTermsDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeleteConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    var vvmToDelete by rememberSaveable { mutableStateOf<String?>(null) }
+    var showCharacterDropdown by rememberSaveable { mutableStateOf(false) }
+    
+    // Use VoiceVoxModelManager to check actual download status
+    val modelManager = remember { com.openclaw.assistant.speech.VoiceVoxModelManager(context) }
+    
+    // Get list of downloaded VVM files (not characters)
+    var downloadedVvmFiles by remember { mutableStateOf(modelManager.getDownloadedVvmFiles()) }
+    
+    // Function to refresh status
+    fun refreshStatus() {
+        downloadedVvmFiles = modelManager.getDownloadedVvmFiles()
+    }
+    
+    val selectedCharacter = VoiceVoxCharacters.getById(styleId)
+    val selectedVvmFile = selectedCharacter?.vvmFileName ?: "0"
+    val isReady = modelManager.isVvmModelReady(selectedVvmFile) && modelManager.isDictionaryReady()
+    
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "VOICEVOX Settings",
+                style = MaterialTheme.typography.titleSmall
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Download status card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isReady) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.errorContainer
+                    }
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        if (isReady) Icons.Default.CheckCircle else Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = if (isReady) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        }
+                    )
+                    Text(
+                        if (isReady) {
+                            stringResource(R.string.voicevox_downloaded)
+                        } else {
+                            stringResource(R.string.voicevox_download_required)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isReady) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        }
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Character/Style Selection dropdown
+            Text(
+                stringResource(R.string.character_style),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            ExposedDropdownMenuBox(
+                expanded = showCharacterDropdown,
+                onExpandedChange = { showCharacterDropdown = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedCharacter?.let { "${it.name}（${it.styleName}）" } ?: "Unknown",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.select_character)) },
+                    trailingIcon = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (selectedCharacter != null && downloadedVvmFiles.contains(selectedCharacter.vvmFileName)) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = "Downloaded",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCharacterDropdown)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                
+                ExposedDropdownMenu(
+                    expanded = showCharacterDropdown,
+                    onDismissRequest = { showCharacterDropdown = false }
+                ) {
+                    VoiceVoxCharacters.CHARACTERS.forEach { character ->
+                        val isVvmReady = modelManager.isVvmModelReady(character.vvmFileName)
+                        DropdownMenuItem(
+                            text = { 
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("${character.name}（${character.styleName}）")
+                                    if (isVvmReady) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = "Downloaded",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            onClick = {
+                                onStyleIdChange(character.id)
+                                showCharacterDropdown = false
+                            },
+                            leadingIcon = {
+                                if (styleId == character.id) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+            
+            // Selected character info
+            if (selectedCharacter != null) {
+                val isVvmReady = modelManager.isVvmModelReady(selectedCharacter.vvmFileName)
+                Text(
+                    stringResource(R.string.voicevox_selected_character, 
+                        "${selectedCharacter.name}（${selectedCharacter.styleName}）", 
+                        modelManager.getVvmFileSizeMB(selectedCharacter.vvmFileName) +
+                        if (isVvmReady) " - ${context.getString(R.string.voicevox_downloaded)}" else ""
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Terms acceptance card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        stringResource(R.string.voicevox_terms_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.voicevox_terms_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    TextButton(
+                        onClick = { showTermsDialog = true },
+                        modifier = Modifier.align(Alignment.Start)
+                    ) {
+                        Text(stringResource(R.string.voicevox_view_terms))
+                    }
+                    
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            stringResource(R.string.voicevox_accept_terms),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Switch(
+                            checked = termsAccepted,
+                            onCheckedChange = onTermsAcceptedChange
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Downloaded VVM files list
+            if (downloadedVvmFiles.isNotEmpty()) {
+                Text(
+                    stringResource(R.string.voicevox_downloaded_files),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                downloadedVvmFiles.forEach { vvmFile ->
+                    // Get all characters that use this VVM file
+                    val charactersInVvm = VoiceVoxCharacters.CHARACTERS.filter { it.vvmFileName == vvmFile }
+                    val charNames = charactersInVvm.take(3).joinToString(", ") { it.name }
+                    val moreCount = charactersInVvm.size - 3
+                    
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "${vvmFile}.vvm (${modelManager.getVvmFileSizeMB(vvmFile)})",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    if (moreCount > 0) "$charNames 他${moreCount}キャラ" else charNames,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    if (vvmFile == selectedVvmFile) {
+                                        vvmToDelete = vvmFile
+                                        showDeleteConfirmDialog = true
+                                    } else {
+                                        modelManager.deleteVvmModel(vvmFile)
+                                        refreshStatus()
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = stringResource(R.string.delete),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+            
+            // Download/Redownload button
+            Button(
+                onClick = onShowSetup,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isReady) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    }
+                )
+            ) {
+                Icon(
+                    if (isReady) Icons.Default.Refresh else Icons.Default.Download,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    if (isReady) {
+                        stringResource(R.string.voicevox_redownload)
+                    } else {
+                        stringResource(R.string.voicevox_download)
+                    }
+                )
+            }
+        }
+    }
+    
+    // Terms Dialog
+    if (showTermsDialog) {
+        AlertDialog(
+            onDismissRequest = { showTermsDialog = false },
+            title = { Text(stringResource(R.string.voicevox_terms_dialog_title)) },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    Text(stringResource(R.string.voicevox_terms_full))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTermsDialog = false }) {
+                    Text(stringResource(R.string.close))
+                }
+            }
+        )
+    }
+    
+    // Delete Confirmation Dialog
+    if (showDeleteConfirmDialog && vvmToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showDeleteConfirmDialog = false
+                vvmToDelete = null
+            },
+            title = { Text(stringResource(R.string.voicevox_delete_confirm_title)) },
+            text = { 
+                val charsInVvm = VoiceVoxCharacters.CHARACTERS.filter { it.vvmFileName == vvmToDelete }
+                Text(stringResource(R.string.voicevox_delete_confirm_message, 
+                    "${vvmToDelete}.vvm (${charsInVvm.joinToString(", ") { it.name }})")) 
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        modelManager.deleteVvmModel(vvmToDelete!!)
+                        refreshStatus()
+                        showDeleteConfirmDialog = false
+                        vvmToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showDeleteConfirmDialog = false
+                    vvmToDelete = null
+                }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun VoiceVoxSetupDialog(
+    onDismiss: () -> Unit,
+    onComplete: () -> Unit
+) {
+    var currentStep by rememberSaveable { mutableStateOf(0) }
+    var dictionaryProgress by rememberSaveable { mutableStateOf(0f) }
+    var modelProgress by rememberSaveable { mutableStateOf(0f) }
+    var hasError by rememberSaveable { mutableStateOf(false) }
+    var errorMessage by rememberSaveable { mutableStateOf("") }
+    var isComplete by rememberSaveable { mutableStateOf(false) }
+    
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    
+    // Simulate download progress
+    LaunchedEffect(currentStep) {
+        when (currentStep) {
+            1 -> {
+                // OpenJTalk dictionary copy
+                hasError = false
+                dictionaryProgress = 0f
+                while (dictionaryProgress < 1f) {
+                    delay(100)
+                    dictionaryProgress += 0.05f
+                }
+                currentStep = 2
+            }
+            2 -> {
+                // VVM model download
+                modelProgress = 0f
+                while (modelProgress < 1f) {
+                    delay(200)
+                    modelProgress += 0.03f
+                }
+                isComplete = true
+            }
+        }
+    }
+    
+    AlertDialog(
+        onDismissRequest = { if (isComplete || hasError) onDismiss() },
+        title = { 
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (!isComplete && !hasError && currentStep > 0) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+                Text(stringResource(R.string.voicevox_setup_title))
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                when {
+                    hasError -> {
+                        // Error display
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Error,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                                Text(
+                                    errorMessage,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                    }
+                    isComplete -> {
+                        // Completion display
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    stringResource(R.string.voicevox_setup_complete),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
+                    currentStep == 0 -> {
+                        // Initial state
+                        Text(stringResource(R.string.voicevox_setup_description))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.voicevox_setup_steps),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    else -> {
+                        // Progress display
+                        // OpenJTalk dictionary progress
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(stringResource(R.string.voicevox_step_dictionary))
+                                Text("${(dictionaryProgress * 100).toInt()}%")
+                            }
+                            LinearProgressIndicator(
+                                progress = { dictionaryProgress },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        
+                        // VVM model download progress
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(stringResource(R.string.voicevox_step_model))
+                                Text("${(modelProgress * 100).toInt()}%")
+                            }
+                            LinearProgressIndicator(
+                                progress = { modelProgress },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            when {
+                hasError -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = onDismiss) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                        Button(
+                            onClick = {
+                                hasError = false
+                                currentStep = 1
+                            }
+                        ) {
+                            Text(stringResource(R.string.retry))
+                        }
+                    }
+                }
+                isComplete -> {
+                    Button(onClick = onComplete) {
+                        Text(stringResource(R.string.done))
+                    }
+                }
+                currentStep == 0 -> {
+                    Button(onClick = { currentStep = 1 }) {
+                        Text(stringResource(R.string.voicevox_start_download))
+                    }
+                }
+                else -> {
+                    // Cancel button during download
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            }
+        }
+    )
+}

@@ -105,8 +105,61 @@
     <string name="wake_word">Wake Word</string>
     <string name="voice_output">Voice Output</string>
     <string name="voice_speed">Voice Speed</string>
+    <string name="voice_speed_range">Range: %s - %s</string>
     <string name="tts_engine_label">TTS Engine</string>
     <string name="tts_engine_auto">Auto (Default)</string>
+    <string name="tts_provider_label">TTS Provider</string>
+    <string name="tts_provider_local">Local TTS</string>
+    <string name="tts_provider_elevenlabs">ElevenLabs</string>
+    <string name="tts_provider_openai">OpenAI TTS</string>
+    <string name="tts_provider_voicevox">VOICEVOX</string>
+    <string name="elevenlabs_api_key_label">ElevenLabs API Key</string>
+    <string name="elevenlabs_voice_id_label">Voice ID</string>
+    <string name="elevenlabs_model_label">Model</string>
+    <string name="elevenlabs_custom_voice_help">ElevenLabsダッシュボードで作成した音声のIDも使用できます</string>
+    <string name="openai_api_key_label">OpenAI API Key</string>
+    <string name="openai_voice_label">Voice</string>
+    <string name="openai_model_label">Model</string>
+    <string name="voicevox_style_label">Character / Style</string>
+    <string name="voicevox_terms_notice">VOICEVOX利用規約に同意</string>
+    <string name="get_api_key">API Keyはこちらから取得</string>
+    <string name="preset_voice">プリセット音声</string>
+    <string name="custom_voice">カスタムID</string>
+    <string name="select_voice">音声を選択</string>
+    <string name="custom_voice_id">Voice ID（カスタム）</string>
+    <string name="select_character">キャラクター・スタイル</string>
+    <string name="character_style">キャラクター・スタイル</string>
+    <string name="voicevox_downloaded">音声データの準備が完了しています</string>
+    <string name="voicevox_downloading">音声データをダウンロード中</string>
+    <string name="voicevox_download_required">音声データのダウンロードが必要です</string>
+    <string name="voicevox_selected_character">選択中: %1$s (%2$s)</string>
+    <string name="voicevox_terms_title">VOICEVOX利用規約</string>
+    <string name="voicevox_terms_description">VOICEVOXを使用するには、利用規約への同意が必要です。音声データはオープンソースのライブラリを使用して生成されます。</string>
+    <string name="voicevox_view_terms">利用規約を詳しく見る</string>
+    <string name="voicevox_accept_terms">利用規約に同意します</string>
+    <string name="voicevox_terms_dialog_title">VOICEVOX利用規約</string>
+    <string name="voicevox_terms_full">VOICEVOXの音声データを利用する場合、以下の規約に同意する必要があります：
+
+1. 音声データは個人利用・商用利用ともに可能です。
+2. 音声ライブラリの権利は各キャラクターの権利者に帰属します。
+3. 音声データの再配布は禁止されています。
+4. 違法な目的での使用は禁止されています。
+
+詳細はVOICEVOX公式サイトでご確認ください。</string>
+    <string name="voicevox_downloaded_files">ダウンロード済み音声データ</string>
+    <string name="voicevox_delete_confirm_title">選択中の音声を削除しますか？</string>
+    <string name="voicevox_delete_confirm_message">「%s」は現在選択中の音声です。削除してもよろしいですか？</string>
+    <string name="voicevox_download">音声データをダウンロード</string>
+    <string name="voicevox_redownload">音声データを再ダウンロード</string>
+    <string name="voicevox_setup_title">VOICEVOXセットアップ</string>
+    <string name="voicevox_setup_description">音声データをダウンロードして、VOICEVOX TTSを使用できるようにします。</string>
+    <string name="voicevox_setup_steps">・OpenJTalk辞書のコピー\n・VVMモデルのダウンロード</string>
+    <string name="voicevox_step_dictionary">OpenJTalk辞書</string>
+    <string name="voicevox_step_model">VVMモデル</string>
+    <string name="voicevox_setup_complete">セットアップが完了しました！</string>
+    <string name="voicevox_start_download">ダウンロード開始</string>
+    <string name="done">完了</string>
+    <string name="start_setup">セットアップ開始</string>
     <string name="read_ai_responses">Read AI responses aloud</string>
     <string name="continuous_conversation">Continuous Conversation</string>
     <string name="auto_start_mic">Auto-start mic after AI speaks</string>
@@ -147,6 +200,8 @@
     <string name="open_settings">Open Settings</string>
     <string name="grant_permission">Grant Permission</string>
     <string name="cancel">Cancel</string>
+    <string name="close">閉じる</string>
+    <string name="retry">再試行</string>
 
     <!-- Agent -->
     <string name="default_agent_label">Default Agent</string>
