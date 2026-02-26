@@ -120,6 +120,7 @@ fun SessionListScreen(
     var sessionActionTarget by remember { mutableStateOf<SessionUiModel?>(null) }
     var showTypeSelectionDialog by remember { mutableStateOf(false) }
     var showNameInputDialog by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val listState = rememberLazyListState()
     var scrollTrigger by remember { mutableIntStateOf(0) }
@@ -163,7 +164,8 @@ fun SessionListScreen(
                     showNameInputDialog = true
                 } else {
                     // Gateway only, or fallback
-                    onCreateSession("New Conversation", true)
+                    val ts = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                    onCreateSession(context.getString(R.string.chat_session_title_format, ts), true)
                 }
             }) {
                 Icon(Icons.Default.Add, contentDescription = newSessionName)
@@ -219,7 +221,8 @@ fun SessionListScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showTypeSelectionDialog = false
-                    onCreateSession("New Conversation", true)
+                    val ts = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                    onCreateSession(context.getString(R.string.chat_session_title_format, ts), true)
                 }) {
                     Text(stringResource(R.string.chat_type_gateway))
                 }
