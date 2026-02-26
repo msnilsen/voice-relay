@@ -857,7 +857,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun com.openclaw.assistant.chat.ChatMessage.toUiChatMessage(): ChatMessage {
-        val mergedText = content.joinToString("\n") { it.text ?: "" }.trim().ifBlank { "(no text)" }
+        val mergedText = content.joinToString("\n") { it.text ?: "" }.trim().ifBlank { "(thinking)" }
         val preprocessed = ChatMarkdownPreprocessor.preprocess(mergedText)
         val isUserMessage = role.equals("user", ignoreCase = true)
         return ChatMessage(
