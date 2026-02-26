@@ -97,7 +97,7 @@ class SettingsRepository(context: Context) {
 
     // Continuous mode
     var continuousMode: Boolean
-        get() = prefs.getBoolean(KEY_CONTINUOUS_MODE, false)
+        get() = prefs.getBoolean(KEY_CONTINUOUS_MODE, true)
         set(value) = prefs.edit().putBoolean(KEY_CONTINUOUS_MODE, value).apply()
 
     // Resume Latest Session
