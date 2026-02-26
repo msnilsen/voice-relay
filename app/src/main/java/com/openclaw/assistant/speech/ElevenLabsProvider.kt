@@ -3,6 +3,7 @@ package com.openclaw.assistant.speech
 import android.content.Context
 import android.media.MediaPlayer
 import android.util.Log
+import com.openclaw.assistant.R
 import com.openclaw.assistant.data.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -53,8 +54,12 @@ class ElevenLabsProvider(private val context: Context) : TTSProvider {
             // Save to temp file and play
             val tempFile = File.createTempFile("elevenlabs_", ".mp3", context.cacheDir)
             FileOutputStream(tempFile).use { it.write(audioData) }
-            
-            playAudioFile(tempFile)
+
+            try {
+                playAudioFile(tempFile)
+            } finally {
+                tempFile.delete()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error speaking: ${e.message}", e)
             false
@@ -171,7 +176,7 @@ class ElevenLabsProvider(private val context: Context) : TTSProvider {
     
     override fun getConfigurationError(): String? {
         return if (settings.elevenLabsApiKey.isBlank()) {
-            "ElevenLabs API Keyが設定されていません"
+            context.getString(R.string.tts_error_elevenlabs_no_apikey)
         } else null
     }
     

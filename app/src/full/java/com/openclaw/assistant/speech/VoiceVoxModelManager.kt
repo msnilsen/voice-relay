@@ -2,6 +2,7 @@ package com.openclaw.assistant.speech
 
 import android.content.Context
 import android.util.Log
+import com.openclaw.assistant.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -151,13 +152,13 @@ class VoiceVoxModelManager(private val context: Context) {
      */
     fun getVvmFileSizeMB(vvmFileName: String): String {
         return when (vvmFileName) {
-            "0" -> "約75MB"
-            "1" -> "約50MB"
-            "2" -> "約55MB"
-            "3" -> "約60MB"
-            "4" -> "約55MB"
-            "5" -> "約50MB"
-            else -> "不明"
+            "0" -> context.getString(R.string.voicevox_size_approx_mb, 75)
+            "1" -> context.getString(R.string.voicevox_size_approx_mb, 50)
+            "2" -> context.getString(R.string.voicevox_size_approx_mb, 55)
+            "3" -> context.getString(R.string.voicevox_size_approx_mb, 60)
+            "4" -> context.getString(R.string.voicevox_size_approx_mb, 55)
+            "5" -> context.getString(R.string.voicevox_size_approx_mb, 50)
+            else -> context.getString(R.string.voicevox_size_unknown)
         }
     }
     

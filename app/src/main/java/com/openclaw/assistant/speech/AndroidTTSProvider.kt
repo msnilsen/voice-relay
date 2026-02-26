@@ -4,6 +4,7 @@ import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
+import com.openclaw.assistant.R
 import com.openclaw.assistant.data.SettingsRepository
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -177,7 +178,7 @@ class AndroidTTSProvider(private val context: Context) : TTSProvider {
     
     override fun getType(): String = TTSProviderType.LOCAL
     
-    override fun getDisplayName(): String = "ローカルTTS"
+    override fun getDisplayName(): String = context.getString(R.string.tts_provider_local_name)
     
     override fun isConfigured(): Boolean = true // Local TTS is always configured
     
@@ -195,22 +196,22 @@ class AndroidTTSProvider(private val context: Context) : TTSProvider {
                 close()
             }
             override fun onStop(utteranceId: String?, interrupted: Boolean) {
-                trySend(TTSState.Error("Stopped"))
+                trySend(TTSState.Error(context.getString(R.string.tts_error_stopped)))
                 close()
             }
             override fun onError(utteranceId: String?) {
-                trySend(TTSState.Error("Error"))
+                trySend(TTSState.Error(context.getString(R.string.tts_error_generic)))
                 close()
             }
         }
-        
+
         if (isInitialized) {
             setupVoice()
             tts?.setOnUtteranceProgressListener(listener)
             tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
             trySend(TTSState.Preparing)
         } else {
-            trySend(TTSState.Error("Not initialized"))
+            trySend(TTSState.Error(context.getString(R.string.tts_error_not_initialized)))
             close()
         }
         

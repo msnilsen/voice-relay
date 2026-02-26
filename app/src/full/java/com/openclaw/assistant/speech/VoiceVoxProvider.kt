@@ -3,7 +3,9 @@ package com.openclaw.assistant.speech
 import android.content.Context
 import android.media.MediaPlayer
 import android.util.Log
+import com.openclaw.assistant.R
 import com.openclaw.assistant.data.SettingsRepository
+import com.openclaw.assistant.speech.voicevox.VoiceVoxCharacters
 import jp.hiroshiba.voicevoxcore.blocking.Onnxruntime
 import jp.hiroshiba.voicevoxcore.blocking.OpenJtalk
 import jp.hiroshiba.voicevoxcore.blocking.Synthesizer
@@ -31,6 +33,7 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
     private var synthesizer: Synthesizer? = null
     private var openJtalk: OpenJtalk? = null
     private var currentModel: VoiceModelFile? = null
+    private var currentVvmFile: String? = null
     private var mediaPlayer: MediaPlayer? = null
     
     private var isInitialized = false
@@ -47,7 +50,7 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
             if (!modelManager.isDictionaryReady()) {
                 val dictPath = File(context.filesDir, VoiceVoxModelManager.DICT_DIR)
                 Log.e(TAG, "initialize: dictionary not ready at $dictPath")
-                initializationError = "OpenJTalk辞書が見つかりません"
+                initializationError = context.getString(R.string.tts_error_voicevox_dict_missing)
                 return false
             }
             
@@ -112,16 +115,13 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
         return modelManager.getVvmFileSizeMB(vvmFileName)
     }
     
+    /**
+     * VVM file name for a given style ID.
+     * Delegates to VoiceVoxCharacterData (single source of truth) so that
+     * this mapping stays in sync with credit display and SettingsActivity.
+     */
     private fun getVvmFileNameForStyle(styleId: Int): String {
-        return when (styleId) {
-            0, 1, 2, 3, 4, 5, 6, 7, 8, 10 -> "0"
-            14 -> "1"
-            15, 16, 17, 18 -> "2"
-            9, 61, 62, 63, 64, 65 -> "3"
-            11, 39, 40, 41 -> "4"
-            22, 36, 37, 38 -> "5"
-            else -> "0"
-        }
+        return VoiceVoxCharacters.getCharacterByStyleId(styleId)?.vvmFile ?: "0"
     }
     
     private fun loadVoiceModel(styleId: Int): Boolean {
@@ -136,15 +136,19 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
         }
         
         try {
-            val currentVvmName = getVvmFileNameForStyle(settings.voiceVoxStyleId)
-            if (currentModel == null || vvmFileName != currentVvmName) {
+            // Load model only if it's different from currently loaded one
+            if (currentModel == null || vvmFileName != currentVvmFile) {
+                Log.d(TAG, "Loading VVM model: $vvmFileName.vvm for style $styleId")
                 currentModel?.close()
                 currentModel = VoiceModelFile(vvmFile.absolutePath)
                 synthesizer?.loadVoiceModel(currentModel!!)
+                currentVvmFile = vvmFileName
+                Log.d(TAG, "VVM model loaded successfully")
             }
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load voice model: ${e.message}", e)
+            currentVvmFile = null
             return false
         }
     }
@@ -162,6 +166,7 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
         
         try {
             val styleId = settings.voiceVoxStyleId
+            Log.d(TAG, "Speaking with styleId: $styleId")
             
             if (!loadVoiceModel(styleId)) {
                 Log.e(TAG, "Failed to load voice model")
@@ -169,6 +174,19 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
             }
             
             val synthesizer = this@VoiceVoxProvider.synthesizer ?: return@withContext false
+            
+            // Debug: Log available styles in synthesizer
+            try {
+                val metas = synthesizer.metas()
+                Log.d(TAG, "Available styles in synthesizer:")
+                metas.forEach { charMeta ->
+                    charMeta.styles.forEach { style ->
+                        Log.d(TAG, "  Style id=${style.id}, name=${style.name}")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not get metas: ${e.message}")
+            }
             
             // Get audio query and adjust speed
             val audioQuery = synthesizer.createAudioQuery(text, styleId)
@@ -240,6 +258,7 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
         try {
             currentModel?.close()
             currentModel = null
+            currentVvmFile = null
             openJtalk = null
             synthesizer = null
         } catch (e: Exception) {
@@ -260,9 +279,9 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
     
     override fun getConfigurationError(): String? {
         return when {
-            !modelManager.isDictionaryReady() -> "OpenJTalk辞書が必要です"
-            !isInitialized -> initializationError ?: "VOICEVOXが初期化されていません"
-            !settings.voiceVoxTermsAccepted -> "VOICEVOX利用規約に同意してください"
+            !modelManager.isDictionaryReady() -> context.getString(R.string.tts_error_voicevox_dict_required)
+            !isInitialized -> initializationError ?: context.getString(R.string.tts_error_voicevox_not_initialized)
+            !settings.voiceVoxTermsAccepted -> context.getString(R.string.tts_error_voicevox_terms_required)
             else -> null
         }
     }
@@ -285,24 +304,7 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
         }
     }
     
-    fun getAvailableCharacters(): List<VoiceVoxCharacter> {
-        return listOf(
-            VoiceVoxCharacter(0, "四国めたん", "あまあま"),
-            VoiceVoxCharacter(2, "四国めたん", "ノーマル"),
-            VoiceVoxCharacter(1, "ずんだもん", "あまあま"),
-            VoiceVoxCharacter(3, "ずんだもん", "ノーマル"),
-            VoiceVoxCharacter(8, "春日部つむぎ", "ノーマル"),
-            VoiceVoxCharacter(10, "雨晴はう", "ノーマル"),
-            VoiceVoxCharacter(14, "冥鳴ひまり", "ノーマル"),
-            VoiceVoxCharacter(16, "九州そら", "ノーマル")
-        )
-    }
-    
-    data class VoiceVoxCharacter(
-        val styleId: Int,
-        val name: String,
-        val styleName: String
-    ) {
-        override fun toString(): String = "$name（$styleName）"
+    fun getAvailableCharacters(): List<com.openclaw.assistant.speech.voicevox.VoiceVoxCharacter> {
+        return VoiceVoxCharacters.getAllCharacters()
     }
 }

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.openclaw.assistant.R
 import com.openclaw.assistant.api.OpenClawClient
 
 import com.openclaw.assistant.data.SettingsRepository
@@ -83,36 +84,75 @@ object ElevenLabsVoiceOptions {
 object VoiceVoxCharacters {
     data class Character(val id: Int, val name: String, val styleName: String, val vvmFileName: String, val sizeBytes: Long)
     
+    // VVM file mapping (actual downloaded files are 0.vvm, 1.vvm, etc.)
+    // Maps style ID to VVM file number
+    val VVM_FILE_MAPPING = mapOf(
+        // 0.vvm - 四国めたん, ずんだもん, 春日部つむぎ
+        0 to "0", 1 to "0", 2 to "0", 3 to "0", 4 to "0",
+        6 to "0", 7 to "0", 8 to "0", 9 to "0", 10 to "0", 11 to "0", 12 to "0",
+        // 1.vvm - 雨晴はう
+        14 to "1",
+        // 2.vvm - 波音リツ, 玄野武宏
+        15 to "2", 16 to "2", 17 to "2", 18 to "2", 19 to "2",
+        // 3.vvm - 白上虎太郎
+        20 to "3", 21 to "3", 22 to "3", 23 to "3", 24 to "3",
+        // 4.vvm - 青山龍星
+        27 to "4", 28 to "4", 29 to "4", 30 to "4", 31 to "4", 32 to "4"
+    )
+    
+    // Get VVM file name for a style ID
+    fun getVvmFileName(styleId: Int): String = VVM_FILE_MAPPING[styleId] ?: "0"
+    
+    // Get all characters in a VVM file
+    fun getCharactersInVvm(vvmFile: String): List<Character> {
+        val styleIds = VVM_FILE_MAPPING.filter { it.value == vvmFile }.keys
+        return CHARACTERS.filter { it.id in styleIds }
+    }
+    
+    // Get display name for VVM file (e.g., "四国めたん, ずんだもん 他3キャラ")
+    fun getVvmDisplayName(vvmFile: String, context: android.content.Context): String {
+        val chars = getCharactersInVvm(vvmFile)
+        if (chars.isEmpty()) return context.getString(R.string.voicevox_unknown_vvm)
+
+        val uniqueNames = chars.map { it.name }.distinct()
+        return when {
+            uniqueNames.size == 1 -> uniqueNames.first()
+            uniqueNames.size == 2 -> uniqueNames.joinToString("、")
+            uniqueNames.size == 3 -> uniqueNames.joinToString("、") + context.getString(R.string.voicevox_other_styles, chars.size - 3)
+            else -> uniqueNames.take(2).joinToString("、") + context.getString(R.string.voicevox_other_chars, uniqueNames.size - 2)
+        }
+    }
+    
     val CHARACTERS = listOf(
-        Character(0, "四国めたん", "あまあま", "metan_amama.vvm", 120_000_000),
-        Character(1, "四国めたん", "ノーマル", "metan_normal.vvm", 120_000_000),
-        Character(2, "四国めたん", "セクシー", "metan_sexy.vvm", 120_000_000),
-        Character(3, "四国めたん", "ツンツン", "metan_tsuntsun.vvm", 120_000_000),
-        Character(4, "四国めたん", "ささやき", "metan_sasayaki.vvm", 60_000_000),
-        Character(6, "ずんだもん", "あまあま", "zundamon_amama.vvm", 120_000_000),
-        Character(7, "ずんだもん", "ノーマル", "zundamon_normal.vvm", 120_000_000),
-        Character(8, "ずんだもん", "セクシー", "zundamon_sexy.vvm", 120_000_000),
-        Character(9, "ずんだもん", "ツンツン", "zundamon_tsuntsun.vvm", 120_000_000),
-        Character(10, "ずんだもん", "ささやき", "zundamon_sasayaki.vvm", 60_000_000),
-        Character(11, "ずんだもん", "ヒソヒソ", "zundamon_hisohiso.vvm", 60_000_000),
-        Character(12, "春日部つむぎ", "ノーマル", "kasukabe_normal.vvm", 120_000_000),
-        Character(14, "雨晴はう", "ノーマル", "amehare_normal.vvm", 120_000_000),
-        Character(15, "波音リツ", "ノーマル", "namine_normal.vvm", 120_000_000),
-        Character(16, "玄野武宏", "ノーマル", "kurono_normal.vvm", 120_000_000),
-        Character(17, "玄野武宏", "喜び", "kurono_yorokobi.vvm", 120_000_000),
-        Character(18, "玄野武宏", "ツンギレ", "kurono_tsungire.vvm", 120_000_000),
-        Character(19, "玄野武宏", "悲しみ", "kurono_kanashimi.vvm", 120_000_000),
-        Character(20, "白上虎太郎", "ふつう", "shirakami_futsu.vvm", 120_000_000),
-        Character(21, "白上虎太郎", "わーい", "shirakami_wai.vvm", 120_000_000),
-        Character(22, "白上虎太郎", "びくびく", "shirakami_bikubiku.vvm", 120_000_000),
-        Character(23, "白上虎太郎", "おこ", "shirakami_oko.vvm", 120_000_000),
-        Character(24, "白上虎太郎", "びえーん", "shirakami_bieen.vvm", 120_000_000),
-        Character(27, "青山龍星", "ノーマル", "aoyama_normal.vvm", 120_000_000),
-        Character(28, "青山龍星", "熱血", "aoyama_nekketsu.vvm", 120_000_000),
-        Character(29, "青山龍星", "不機嫌", "aoyama_fukigen.vvm", 120_000_000),
-        Character(30, "青山龍星", "喜び", "aoyama_yorokobi.vvm", 120_000_000),
-        Character(31, "青山龍星", "悲しみ", "aoyama_kanashimi.vvm", 120_000_000),
-        Character(32, "青山龍星", "囁き", "aoyama_sasayaki.vvm", 60_000_000)
+        Character(0, "四国めたん", "あまあま", "0", 120_000_000),
+        Character(1, "四国めたん", "ノーマル", "0", 120_000_000),
+        Character(2, "四国めたん", "セクシー", "0", 120_000_000),
+        Character(3, "四国めたん", "ツンツン", "0", 120_000_000),
+        Character(4, "四国めたん", "ささやき", "0", 60_000_000),
+        Character(6, "ずんだもん", "あまあま", "0", 120_000_000),
+        Character(7, "ずんだもん", "ノーマル", "0", 120_000_000),
+        Character(8, "ずんだもん", "セクシー", "0", 120_000_000),
+        Character(9, "ずんだもん", "ツンツン", "0", 120_000_000),
+        Character(10, "ずんだもん", "ささやき", "0", 60_000_000),
+        Character(11, "ずんだもん", "ヒソヒソ", "0", 60_000_000),
+        Character(12, "春日部つむぎ", "ノーマル", "0", 120_000_000),
+        Character(14, "雨晴はう", "ノーマル", "1", 120_000_000),
+        Character(15, "波音リツ", "ノーマル", "2", 120_000_000),
+        Character(16, "玄野武宏", "ノーマル", "2", 120_000_000),
+        Character(17, "玄野武宏", "喜び", "2", 120_000_000),
+        Character(18, "玄野武宏", "ツンギレ", "2", 120_000_000),
+        Character(19, "玄野武宏", "悲しみ", "2", 120_000_000),
+        Character(20, "白上虎太郎", "ふつう", "3", 120_000_000),
+        Character(21, "白上虎太郎", "わーい", "3", 120_000_000),
+        Character(22, "白上虎太郎", "びくびく", "3", 120_000_000),
+        Character(23, "白上虎太郎", "おこ", "3", 120_000_000),
+        Character(24, "白上虎太郎", "びえーん", "3", 120_000_000),
+        Character(27, "青山龍星", "ノーマル", "4", 120_000_000),
+        Character(28, "青山龍星", "熱血", "4", 120_000_000),
+        Character(29, "青山龍星", "不機嫌", "4", 120_000_000),
+        Character(30, "青山龍星", "喜び", "4", 120_000_000),
+        Character(31, "青山龍星", "悲しみ", "4", 120_000_000),
+        Character(32, "青山龍星", "囁き", "4", 60_000_000)
     )
     
     fun getById(id: Int): Character? = CHARACTERS.find { it.id == id }
@@ -1725,11 +1765,16 @@ fun VoiceVoxSettingsCard(
     val modelManager = remember { com.openclaw.assistant.speech.VoiceVoxModelManager(context) }
     
     // Get list of downloaded VVM files (not characters)
-    var downloadedVvmFiles by remember { mutableStateOf(modelManager.getDownloadedVvmFiles()) }
+    var downloadedVvmFiles by remember { mutableStateOf(listOf<String>()) }
     
     // Function to refresh status
     fun refreshStatus() {
         downloadedVvmFiles = modelManager.getDownloadedVvmFiles()
+    }
+    
+    // Refresh every time the card is recomposed (including when dialog closes)
+    LaunchedEffect(termsAccepted) {
+        refreshStatus()
     }
     
     val selectedCharacter = VoiceVoxCharacters.getById(styleId)
@@ -1936,10 +1981,10 @@ fun VoiceVoxSettingsCard(
                 )
                 
                 downloadedVvmFiles.forEach { vvmFile ->
-                    // Get all characters that use this VVM file
-                    val charactersInVvm = VoiceVoxCharacters.CHARACTERS.filter { it.vvmFileName == vvmFile }
-                    val charNames = charactersInVvm.take(3).joinToString(", ") { it.name }
-                    val moreCount = charactersInVvm.size - 3
+                    // Get display name for this VVM file
+                    val ctx = LocalContext.current
+                    val vvmDisplayName = VoiceVoxCharacters.getVvmDisplayName(vvmFile, ctx)
+                    val styleCount = VoiceVoxCharacters.getCharactersInVvm(vvmFile).size
                     
                     Card(
                         modifier = Modifier
@@ -1958,11 +2003,11 @@ fun VoiceVoxSettingsCard(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "${vvmFile}.vvm (${modelManager.getVvmFileSizeMB(vvmFile)})",
+                                    vvmDisplayName,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 Text(
-                                    if (moreCount > 0) "$charNames 他${moreCount}キャラ" else charNames,
+                                    "${vvmFile}.vvm · ${modelManager.getVvmFileSizeMB(vvmFile)} · ${styleCount}スタイル",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -2120,7 +2165,7 @@ fun VoiceVoxSetupDialog(
     }
     
     AlertDialog(
-        onDismissRequest = { if (isComplete || hasError) onDismiss() },
+        onDismissRequest = { if (isComplete || hasError || currentStep == 0) onDismiss() },
         title = { 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -2257,8 +2302,13 @@ fun VoiceVoxSetupDialog(
                     }
                 }
                 currentStep == 0 -> {
-                    Button(onClick = { currentStep = 1 }) {
-                        Text(stringResource(R.string.voicevox_start_download))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = onDismiss) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                        Button(onClick = { currentStep = 1 }) {
+                            Text(stringResource(R.string.voicevox_start_download))
+                        }
                     }
                 }
                 else -> {

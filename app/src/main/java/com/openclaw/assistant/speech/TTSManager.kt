@@ -3,6 +3,7 @@ package com.openclaw.assistant.speech
 import android.content.Context
 import android.util.Log
 import com.openclaw.assistant.BuildConfig
+import com.openclaw.assistant.R
 import com.openclaw.assistant.data.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -61,9 +62,9 @@ class TTSManager(private val context: Context) {
     fun getErrorMessage(): String? {
         val provider = getCurrentProvider()
         return when {
-            provider == null -> "不明なTTSタイプ: ${settings.ttsType}"
+            provider == null -> context.getString(R.string.tts_error_unknown_type, settings.ttsType)
             !provider.isConfigured() -> provider.getConfigurationError()
-            !provider.isAvailable() -> "${provider.getDisplayName()}は利用できません"
+            !provider.isAvailable() -> context.getString(R.string.tts_error_provider_unavailable, provider.getDisplayName())
             else -> null
         }
     }
@@ -147,7 +148,9 @@ class TTSManager(private val context: Context) {
         providers[TTSProviderType.LOCAL] = AndroidTTSProvider(context)
         providers[TTSProviderType.ELEVENLABS] = ElevenLabsProvider(context)
         providers[TTSProviderType.OPENAI] = OpenAIProvider(context)
-        providers[TTSProviderType.VOICEVOX] = VoiceVoxProvider(context)
+        if (BuildConfig.FLAVOR == "full") {
+            providers[TTSProviderType.VOICEVOX] = VoiceVoxProvider(context)
+        }
     }
     
     /**
@@ -170,15 +173,15 @@ class TTSManager(private val context: Context) {
         return listOf(
             TTSProviderInfo(
                 type = TTSProviderType.LOCAL,
-                displayName = "ローカルTTS",
-                description = "Android標準の音声合成",
+                displayName = context.getString(R.string.tts_provider_local_name),
+                description = context.getString(R.string.tts_provider_local_description),
                 isAvailable = true,
                 isConfigured = true
             ),
             TTSProviderInfo(
                 type = TTSProviderType.ELEVENLABS,
                 displayName = "ElevenLabs",
-                description = "高品質クラウド音声合成",
+                description = context.getString(R.string.tts_provider_elevenlabs_description),
                 isAvailable = true,
                 isConfigured = settings.elevenLabsApiKey.isNotBlank()
             ),
@@ -192,9 +195,9 @@ class TTSManager(private val context: Context) {
             TTSProviderInfo(
                 type = TTSProviderType.VOICEVOX,
                 displayName = "VOICEVOX",
-                description = "日本語音声合成（ずんだもん等）",
+                description = context.getString(R.string.tts_provider_voicevox_description),
                 isAvailable = providers[TTSProviderType.VOICEVOX]?.isAvailable() == true,
-                isConfigured = settings.voiceVoxTermsAccepted && 
+                isConfigured = settings.voiceVoxTermsAccepted &&
                               providers[TTSProviderType.VOICEVOX]?.isAvailable() == true
             )
         )

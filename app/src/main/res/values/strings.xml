@@ -485,4 +485,50 @@
     <string name="setup_guide_pairing_run_on_host">Run these on the gateway host:</string>
     <string name="setup_guide_pairing_retest_desc">Then tap Test Connection again.</string>
     <string name="setup_guide_copied">Copied</string>
+
+    <!-- Credits Screen -->
+    <string name="credits_title">クレジット</string>
+    <string name="credits_back_description">戻る</string>
+    <string name="credits_oss_title">オープンソースライセンス</string>
+    <string name="credits_oss_description">このアプリケーションは以下のオープンソースソフトウェアを使用しています：</string>
+    <string name="credits_voicevox_lib_title">VOICEVOX音声ライブラリ</string>
+    <string name="credits_voicevox_lib_description">このアプリケーションはVOICEVOXの音声ライブラリを使用しています。</string>
+    <string name="credits_voicevox_current_voice">使用している音声</string>
+    <string name="credits_voicevox_open_terms">利用規約を開く</string>
+    <string name="credits_voicevox_about_title">VOICEVOXについて</string>
+    <string name="credits_voicevox_about_description">VOICEVOXは商用・非商用問わず利用可能な日本語音声合成ソフトウェアです。詳細な利用規約は各キャラクターの公式サイトをご確認ください。</string>
+    <string name="credits_voicevox_official_site">VOICEVOX公式サイト</string>
+    <string name="credits_voicevox_terms_link">VOICEVOX利用規約</string>
+    <string name="credits_voicevox_unknown_character">スタイルID: %1$d（詳細情報なし）</string>
+
+    <!-- TTS Provider Names and Descriptions -->
+    <string name="tts_provider_local_name">ローカルTTS</string>
+    <string name="tts_provider_local_description">Android標準の音声合成</string>
+    <string name="tts_provider_elevenlabs_description">高品質クラウド音声合成</string>
+    <string name="tts_provider_voicevox_description">日本語音声合成（ずんだもん等）</string>
+
+    <!-- TTS Error Messages -->
+    <string name="tts_error_unknown_type">不明なTTSタイプ: %1$s</string>
+    <string name="tts_error_provider_unavailable">%1$sは利用できません</string>
+    <string name="tts_error_elevenlabs_no_apikey">ElevenLabs API Keyが設定されていません</string>
+    <string name="tts_error_openai_no_apikey">OpenAI API Keyが設定されていません</string>
+    <string name="tts_error_voicevox_dict_missing">OpenJTalk辞書が見つかりません</string>
+    <string name="tts_error_voicevox_dict_required">OpenJTalk辞書が必要です</string>
+    <string name="tts_error_voicevox_not_initialized">VOICEVOXが初期化されていません</string>
+    <string name="tts_error_voicevox_terms_required">VOICEVOX利用規約に同意してください</string>
+    <string name="tts_error_not_initialized">初期化されていません</string>
+    <string name="tts_error_stopped">停止しました</string>
+    <string name="tts_error_generic">エラーが発生しました</string>
+
+    <!-- OpenAI Model Descriptions -->
+    <string name="openai_model_desc_latest">最新・最も信頼性が高い</string>
+    <string name="openai_model_desc_low_latency">低レイテンシー</string>
+    <string name="openai_model_desc_hd">高品質</string>
+
+    <!-- VoiceVox Display Strings -->
+    <string name="voicevox_unknown_vvm">不明</string>
+    <string name="voicevox_other_styles">他%1$dスタイル</string>
+    <string name="voicevox_other_chars">他%1$dキャラ</string>
+    <string name="voicevox_size_approx_mb">約%1$dMB</string>
+    <string name="voicevox_size_unknown">不明</string>
 </resources>
