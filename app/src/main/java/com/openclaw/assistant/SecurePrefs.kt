@@ -42,7 +42,7 @@ class SecurePrefs(context: Context) {
     MutableStateFlow(loadOrMigrateDisplayName(context = context))
   val displayName: StateFlow<String> = _displayName
 
-  private val _cameraEnabled = MutableStateFlow(prefs.getBoolean("camera.enabled", true))
+  private val _cameraEnabled = MutableStateFlow(prefs.getBoolean("camera.enabled", false))
   val cameraEnabled: StateFlow<Boolean> = _cameraEnabled
 
   private val _locationMode =
@@ -50,10 +50,10 @@ class SecurePrefs(context: Context) {
   val locationMode: StateFlow<LocationMode> = _locationMode
 
   private val _locationPreciseEnabled =
-    MutableStateFlow(prefs.getBoolean("location.preciseEnabled", true))
+    MutableStateFlow(prefs.getBoolean("location.preciseEnabled", false))
   val locationPreciseEnabled: StateFlow<Boolean> = _locationPreciseEnabled
 
-  private val _preventSleep = MutableStateFlow(prefs.getBoolean("screen.preventSleep", true))
+  private val _preventSleep = MutableStateFlow(prefs.getBoolean("screen.preventSleep", false))
   val preventSleep: StateFlow<Boolean> = _preventSleep
 
   private val _manualEnabled =

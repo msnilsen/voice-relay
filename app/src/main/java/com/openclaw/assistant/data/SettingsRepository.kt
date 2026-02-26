@@ -97,7 +97,7 @@ class SettingsRepository(context: Context) {
 
     // Continuous mode
     var continuousMode: Boolean
-        get() = prefs.getBoolean(KEY_CONTINUOUS_MODE, false)
+        get() = prefs.getBoolean(KEY_CONTINUOUS_MODE, true)
         set(value) = prefs.edit().putBoolean(KEY_CONTINUOUS_MODE, value).apply()
 
     // Resume Latest Session
@@ -165,6 +165,11 @@ class SettingsRepository(context: Context) {
     var isVerified: Boolean
         get() = prefs.getBoolean(KEY_IS_VERIFIED, false)
         set(value) = prefs.edit().putBoolean(KEY_IS_VERIFIED, value).apply()
+
+    // Has completed initial setup guide
+    var hasCompletedSetup: Boolean
+        get() = prefs.getBoolean(KEY_HAS_COMPLETED_SETUP, false)
+        set(value) = prefs.edit().putBoolean(KEY_HAS_COMPLETED_SETUP, value).apply()
 
     // Default Agent ID
     var defaultAgentId: String
@@ -243,6 +248,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_ELEVENLABS_API_KEY = "elevenlabs_api_key"
         private const val KEY_ELEVENLABS_VOICE_ID = "elevenlabs_voice_id"
         private const val KEY_ELEVENLABS_MODEL_ID = "elevenlabs_model_id"
+        private const val KEY_HAS_COMPLETED_SETUP = "has_completed_setup"
 
         // Wake word presets
         const val WAKE_WORD_OPEN_CLAW = "open_claw"

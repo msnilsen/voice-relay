@@ -334,7 +334,8 @@ fun ChatScreen(
                                 agents = uiState.availableAgents,
                                 selectedAgentId = uiState.selectedAgentId,
                                 defaultAgentId = uiState.defaultAgentId,
-                                onAgentSelected = onAgentSelected
+                                onAgentSelected = onAgentSelected,
+                                isReadOnly = uiState.isNodeChatMode
                             )
                         }
                     },
@@ -670,7 +671,8 @@ fun AgentSelector(
     agents: List<AgentInfo>,
     selectedAgentId: String?,
     defaultAgentId: String = "main",
-    onAgentSelected: (String?) -> Unit
+    onAgentSelected: (String?) -> Unit,
+    isReadOnly: Boolean = false
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val effectiveId = selectedAgentId ?: defaultAgentId
@@ -688,7 +690,13 @@ fun AgentSelector(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .clickable { if (agents.isNotEmpty()) expanded = true }
+                .then(
+                    if (!isReadOnly && agents.isNotEmpty()) {
+                        Modifier.clickable { expanded = true }
+                    } else {
+                        Modifier
+                    }
+                )
                 .padding(vertical = 4.dp, horizontal = 4.dp)
         ) {
             Icon(
@@ -704,16 +712,18 @@ fun AgentSelector(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
             )
-            Spacer(modifier = Modifier.width(2.dp))
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (!isReadOnly) {
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
-        if (agents.isNotEmpty()) {
+        if (!isReadOnly && agents.isNotEmpty()) {
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
