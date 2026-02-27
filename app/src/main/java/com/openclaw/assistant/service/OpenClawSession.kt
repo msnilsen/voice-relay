@@ -3,6 +3,7 @@ package com.openclaw.assistant.service
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.PowerManager
 import android.service.voice.VoiceInteractionSession
 import android.speech.SpeechRecognizer
 import android.util.Log
@@ -42,6 +43,7 @@ import com.openclaw.assistant.data.SettingsRepository
 import com.openclaw.assistant.api.OpenClawClient
 import com.openclaw.assistant.speech.SpeechRecognizerManager
 import com.openclaw.assistant.speech.TTSManager
+import com.openclaw.assistant.speech.TTSState
 import com.openclaw.assistant.speech.SpeechResult
 import com.openclaw.assistant.speech.TTSUtils
 import kotlinx.coroutines.*
@@ -84,6 +86,9 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     private var partialText = mutableStateOf("")
     private var errorMessage = mutableStateOf<String?>(null)
     private var audioLevel = mutableStateOf(0f) // Audio level for visualization
+
+    // WakeLock to keep CPU alive during voice conversation when screen is off
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         Log.e(TAG, "Session onCreate start")
@@ -224,6 +229,27 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     
     override fun onHide() {
         super.onHide()
+
+        // If a voice session is active (listening, thinking, or speaking),
+        // keep resources alive so conversation continues with screen off.
+        val state = currentState.value
+        val isVoiceActive = state == AssistantState.LISTENING ||
+                state == AssistantState.THINKING ||
+                state == AssistantState.SPEAKING ||
+                state == AssistantState.PREPARING_SPEECH ||
+                state == AssistantState.PROCESSING
+        
+        if (isVoiceActive) {
+            Log.d(TAG, "onHide: voice session active ($state), keeping resources alive")
+            // Keep scope, speechManager, ttsManager alive
+            // SessionForegroundService is already running
+            return
+        }
+
+        cleanupSession()
+    }
+
+    private fun cleanupSession() {
         lifecycleRegistry.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_PAUSE)
         lifecycleRegistry.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_STOP)
 
@@ -233,6 +259,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         scope.cancel()
         speechManager.destroy()
         ttsManager.stop()
+        releaseWakeLock()
 
         // Resume Hotword
         sendResumeBroadcast()
@@ -248,6 +275,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         SessionForegroundService.stop(context)
         ttsManager.shutdown()
         toneGenerator.release()
+        releaseWakeLock()
     }
 
     private fun sendPauseBroadcast() {
@@ -271,6 +299,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     private fun startListening() {
         Log.d(TAG, "startListening() called, currentState=${currentState.value}, listeningJob=${listeningJob}, speakingJob=${speakingJob}")
         listeningJob?.cancel()
+        acquireWakeLock()
         
         currentState.value = AssistantState.PROCESSING
         displayText.value = ""
@@ -458,7 +487,6 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     }
 
     private suspend fun handleResponseReceived(responseText: String) {
-        stopThinkingSound()
 
         // Save AI Message
         currentSessionId?.let { sessionId ->
@@ -466,11 +494,14 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         }
 
         if (settings.ttsEnabled) {
+            // Thinking sound continues until actual audio playback starts
             speakResponse(responseText)
         } else if (settings.continuousMode) {
+            stopThinkingSound()
             delay(500)
             startListening()
         } else {
+            stopThinkingSound()
             // TTS disabled & continuous conversation OFF: Return to IDLE
             currentState.value = AssistantState.IDLE
             SessionForegroundService.stop(context)
@@ -487,8 +518,8 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
 
     private fun speakResponse(text: String) {
         Log.d(TAG, "speakResponse() called, text length=${text.length}")
-        stopThinkingSound()
-        currentState.value = AssistantState.SPEAKING
+        // Thinking sound continues until TTSState.Speaking is received
+        currentState.value = AssistantState.PREPARING_SPEECH
         val cleanText = TTSUtils.stripMarkdownForSpeech(text)
 
         speakingJob = scope.launch {
@@ -497,7 +528,29 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                 val chunks = TTSUtils.splitTextForTTS(cleanText, maxLen)
                 var success = chunks.isNotEmpty()
                 for (chunk in chunks) {
-                    if (!ttsManager.speak(chunk)) {
+                    var chunkSuccess = false
+                    ttsManager.speakWithProgress(chunk).collect { state ->
+                        when (state) {
+                            is TTSState.Preparing -> {
+                                Log.d(TAG, "TTS Preparing")
+                                // Keep PREPARING_SPEECH state
+                            }
+                            is TTSState.Speaking -> {
+                                Log.d(TAG, "TTS Speaking")
+                                stopThinkingSound()
+                                currentState.value = AssistantState.SPEAKING
+                            }
+                            is TTSState.Done -> {
+                                Log.d(TAG, "TTS Done")
+                                chunkSuccess = true
+                            }
+                            is TTSState.Error -> {
+                                Log.e(TAG, "TTS Error: ${state.message}")
+                                chunkSuccess = false
+                            }
+                        }
+                    }
+                    if (!chunkSuccess) {
                         success = false
                         break
                     }
@@ -515,6 +568,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                     } else {
                         // If continuous conversation is OFF, end the session
                         currentState.value = AssistantState.IDLE
+                        releaseWakeLock()
                         SessionForegroundService.stop(context)
                     }
                 } else {
@@ -524,6 +578,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
             } catch (e: Exception) {
                 Log.e(TAG, "TTS speak error", e)
                 abandonAudioFocus()
+                releaseWakeLock()
                 currentState.value = AssistantState.ERROR
                 errorMessage.value = context.getString(R.string.error_speech_general)
             }
@@ -542,6 +597,28 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         }
         audioFocusRequest = null
     }
+
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = pm.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "OpenClawAssistant::SessionWakeLock"
+        ).apply {
+            acquire(10 * 60 * 1000L) // 10 min max to prevent leak
+        }
+        Log.d(TAG, "WakeLock acquired")
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+                Log.d(TAG, "WakeLock released")
+            }
+        }
+        wakeLock = null
+    }
 }
 
 /**
@@ -552,6 +629,7 @@ enum class AssistantState {
     LISTENING,
     PROCESSING,
     THINKING,
+    PREPARING_SPEECH,
     SPEAKING,
     ERROR
 }
@@ -646,14 +724,14 @@ fun AssistantUI(
                     .background(
                         when (state) {
                             AssistantState.LISTENING -> Color(0xFF4CAF50)
-                            AssistantState.SPEAKING -> Color(0xFF2196F3)
+                            AssistantState.SPEAKING, AssistantState.PREPARING_SPEECH -> Color(0xFF2196F3)
                             AssistantState.THINKING, AssistantState.PROCESSING -> Color(0xFFFFC107)
                             AssistantState.ERROR -> Color(0xFFF44336)
                             else -> Color(0xFF9E9E9E)
                         }
                     )
                     .then(
-                        if (state == AssistantState.SPEAKING) {
+                        if (state == AssistantState.SPEAKING || state == AssistantState.PREPARING_SPEECH) {
                             Modifier.clickable { onInterrupt() }
                         } else {
                             Modifier
@@ -677,6 +755,7 @@ fun AssistantUI(
                     AssistantState.LISTENING -> stringResource(R.string.state_listening)
                     AssistantState.PROCESSING -> stringResource(R.string.state_processing)
                     AssistantState.THINKING -> stringResource(R.string.state_thinking)
+                    AssistantState.PREPARING_SPEECH -> stringResource(R.string.preparing_speech)
                     AssistantState.SPEAKING -> stringResource(R.string.state_speaking)
                     AssistantState.ERROR -> stringResource(R.string.state_error)
                     else -> stringResource(R.string.state_ready)
