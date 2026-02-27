@@ -70,11 +70,11 @@ jobs:
       - name: Upload Standard Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-standard-debug-apk
+          name: app-debug-apk
           path: app/build/outputs/apk/standard/debug/*.apk
 
-      - name: Upload Full Debug APK
+      - name: Upload Full (VOICEVOX) Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-full-debug-apk
+          name: app-debug-apk-in-VOICEVOX
           path: app/build/outputs/apk/full/debug/*.apk

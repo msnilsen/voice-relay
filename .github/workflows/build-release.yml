@@ -65,10 +65,10 @@ jobs:
       - name: Rename Artifacts
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          mv app/build/outputs/apk/standard/release/*.apk app/build/outputs/apk/standard/release/OpenClawAssistant-standard-${{ github.ref_name }}.apk
-          mv app/build/outputs/apk/full/release/*.apk app/build/outputs/apk/full/release/OpenClawAssistant-full-${{ github.ref_name }}.apk
-          mv app/build/outputs/bundle/standard/release/*.aab app/build/outputs/bundle/standard/release/OpenClawAssistant-standard-${{ github.ref_name }}.aab
-          mv app/build/outputs/bundle/full/release/*.aab app/build/outputs/bundle/full/release/OpenClawAssistant-full-${{ github.ref_name }}.aab
+          mv app/build/outputs/apk/standard/release/*.apk app/build/outputs/apk/standard/release/OpenClawAssistant-${{ github.ref_name }}.apk
+          mv app/build/outputs/apk/full/release/*.apk app/build/outputs/apk/full/release/OpenClawAssistant-${{ github.ref_name }}-in-VOICEVOX.apk
+          mv app/build/outputs/bundle/standard/release/*.aab app/build/outputs/bundle/standard/release/OpenClawAssistant-${{ github.ref_name }}.aab
+          mv app/build/outputs/bundle/full/release/*.aab app/build/outputs/bundle/full/release/OpenClawAssistant-${{ github.ref_name }}-in-VOICEVOX.aab
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -77,10 +77,10 @@ jobs:
           name: Release ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            app/build/outputs/apk/standard/release/OpenClawAssistant-standard-${{ github.ref_name }}.apk
-            app/build/outputs/apk/full/release/OpenClawAssistant-full-${{ github.ref_name }}.apk
-            app/build/outputs/bundle/standard/release/OpenClawAssistant-standard-${{ github.ref_name }}.aab
-            app/build/outputs/bundle/full/release/OpenClawAssistant-full-${{ github.ref_name }}.aab
+            app/build/outputs/apk/standard/release/OpenClawAssistant-${{ github.ref_name }}.apk
+            app/build/outputs/apk/full/release/OpenClawAssistant-${{ github.ref_name }}-in-VOICEVOX.apk
+            app/build/outputs/bundle/standard/release/OpenClawAssistant-${{ github.ref_name }}.aab
+            app/build/outputs/bundle/full/release/OpenClawAssistant-${{ github.ref_name }}-in-VOICEVOX.aab
           draft: false
           prerelease: false
 
@@ -88,16 +88,16 @@ jobs:
         uses: actions/upload-artifact@v4
         if: "!startsWith(github.ref, 'refs/tags/')"
         with:
-          name: release-artifacts-standard
+          name: release-artifacts
           path: |
             app/build/outputs/apk/standard/release/*.apk
             app/build/outputs/bundle/standard/release/*.aab
 
-      - name: Upload Full Artifacts (Non-tag push)
+      - name: Upload VOICEVOX Artifacts (Non-tag push)
         uses: actions/upload-artifact@v4
         if: "!startsWith(github.ref, 'refs/tags/')"
         with:
-          name: release-artifacts-full
+          name: release-artifacts-in-VOICEVOX
           path: |
             app/build/outputs/apk/full/release/*.apk
             app/build/outputs/bundle/full/release/*.aab
