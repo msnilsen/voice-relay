@@ -149,6 +149,7 @@ class InvokeDispatcher(
       // Camera commands
       OpenClawCameraCommand.Snap.rawValue -> cameraHandler.handleSnap(paramsJson)
       OpenClawCameraCommand.Clip.rawValue -> cameraHandler.handleClip(paramsJson)
+      OpenClawCameraCommand.List.rawValue -> cameraHandler.handleList(paramsJson)
 
       // Location command
       OpenClawLocationCommand.Get.rawValue -> locationHandler.handleLocationGet(paramsJson)

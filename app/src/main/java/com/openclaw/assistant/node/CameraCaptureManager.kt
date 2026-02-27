@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.util.Base64
 import android.content.pm.PackageManager
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.LifecycleOwner
 import androidx.camera.core.CameraSelector
@@ -40,6 +41,7 @@ import kotlin.coroutines.resumeWithException
 class CameraCaptureManager(private val context: Context) {
   data class Payload(val payloadJson: String)
   data class FilePayload(val file: File, val durationMs: Long, val hasAudio: Boolean)
+  data class CameraInfo(val id: String, val facing: String)
 
   @Volatile private var lifecycleOwner: LifecycleOwner? = null
   @Volatile private var permissionRequester: PermissionRequester? = null
@@ -75,6 +77,23 @@ class CameraCaptureManager(private val context: Context) {
       throw IllegalStateException("MIC_PERMISSION_REQUIRED: grant Microphone permission")
     }
   }
+
+  @SuppressLint("UnsafeOptInUsageError")
+  suspend fun list(): List<CameraInfo> =
+    withContext(Dispatchers.Main) {
+      ensureCameraPermission()
+      val provider = context.cameraProvider()
+      provider.availableCameraInfos.map { info ->
+        val facing =
+          when (info.lensFacing) {
+            CameraSelector.LENS_FACING_FRONT -> "front"
+            CameraSelector.LENS_FACING_BACK -> "back"
+            else -> "external"
+          }
+        val id = Camera2CameraInfo.from(info).cameraId
+        CameraInfo(id, facing)
+      }
+    }
 
   suspend fun snap(paramsJson: String?): Payload =
     withContext(Dispatchers.Main) {

@@ -36,6 +36,7 @@ enum class OpenClawCanvasA2UICommand(val rawValue: String) {
 enum class OpenClawCameraCommand(val rawValue: String) {
     Snap("camera.snap"),
     Clip("camera.clip"),
+    List("camera.list"),
     ;
 
     companion object {

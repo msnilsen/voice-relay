@@ -23,6 +23,18 @@ class CameraHandler(
   private val invokeErrorFromThrowable: (err: Throwable) -> Pair<String, String>,
 ) {
 
+  suspend fun handleList(paramsJson: String?): GatewaySession.InvokeResult {
+    try {
+      val cameras = camera.list()
+      val camerasJson =
+        cameras.joinToString(",") { """{"id":"${it.id}","facing":"${it.facing}"}""" }
+      return GatewaySession.InvokeResult.ok("""{"cameras":[$camerasJson]}""")
+    } catch (err: Throwable) {
+      val (code, message) = invokeErrorFromThrowable(err)
+      return GatewaySession.InvokeResult.error(code = code, message = message)
+    }
+  }
+
   suspend fun handleSnap(paramsJson: String?): GatewaySession.InvokeResult {
     val logFile = if (BuildConfig.DEBUG) java.io.File(appContext.cacheDir, "camera_debug.log") else null
     fun camLog(msg: String) {
