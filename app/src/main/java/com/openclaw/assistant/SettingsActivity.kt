@@ -193,14 +193,23 @@ class SettingsActivity : ComponentActivity() {
 
         setContent {
             OpenClawAssistantTheme {
-                SettingsScreen(
-                    settings = settings,
-                    onSave = { 
-                        Toast.makeText(this, getString(R.string.saved), Toast.LENGTH_SHORT).show()
-                        finish()
-                    },
-                    onBack = { finish() }
-                )
+                var showCredits by remember { mutableStateOf(false) }
+                if (showCredits) {
+                    com.openclaw.assistant.ui.settings.CreditsScreen(
+                        settings = settings,
+                        onBack = { showCredits = false }
+                    )
+                } else {
+                    SettingsScreen(
+                        settings = settings,
+                        onSave = {
+                            Toast.makeText(this, getString(R.string.saved), Toast.LENGTH_SHORT).show()
+                            finish()
+                        },
+                        onBack = { finish() },
+                        onCredits = { showCredits = true }
+                    )
+                }
             }
         }
     }
@@ -211,7 +220,8 @@ class SettingsActivity : ComponentActivity() {
 fun SettingsScreen(
     settings: SettingsRepository,
     onSave: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onCredits: () -> Unit = {}
 ) {
     var httpUrl by rememberSaveable { mutableStateOf(settings.httpUrl) }
     var authToken by rememberSaveable { mutableStateOf(settings.authToken) }
@@ -374,6 +384,9 @@ fun SettingsScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onCredits) {
+                        Icon(Icons.Default.Info, contentDescription = stringResource(R.string.credits_title))
+                    }
                     TextButton(
                         onClick = {
                             settings.connectionType = if (selectedTabIndex == 0) {
