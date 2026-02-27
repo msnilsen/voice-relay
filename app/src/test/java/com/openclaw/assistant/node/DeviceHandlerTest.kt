@@ -75,10 +75,23 @@ class DeviceHandlerTest {
     assertTrue(result.ok)
 
     val payload = json.parseToJsonElement(result.payloadJson!!).asObjectOrNull()!!
-    assertTrue(payload.containsKey("camera"))
-    assertTrue(payload.containsKey("microphone"))
-    assertTrue(payload.containsKey("location"))
-    assertTrue(payload.containsKey("sms"))
+    assertEquals("true", (payload["camera"] as JsonPrimitive).content)
+    assertEquals("false", (payload["microphone"] as JsonPrimitive).content)
+    assertEquals("true", (payload["location"] as JsonPrimitive).content)
+    assertEquals("false", (payload["sms"] as JsonPrimitive).content)
+  }
+
+  @Test
+  fun handleStatus_chargingTrue_whenStatusFull() {
+    every { mockBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) } returns 100
+    every { mockBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_STATUS) } returns BatteryManager.BATTERY_STATUS_FULL
+
+    val result = deviceHandler.handleStatus()
+    assertTrue(result.ok)
+
+    val payload = json.parseToJsonElement(result.payloadJson!!).asObjectOrNull()!!
+    assertEquals("true", (payload["charging"] as JsonPrimitive).content)
+    assertEquals("100", (payload["batteryLevel"] as JsonPrimitive).content)
   }
 
   @Test
