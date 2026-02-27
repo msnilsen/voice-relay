@@ -114,6 +114,54 @@ class SettingsRepository(context: Context) {
     var ttsEngine: String
         get() = prefs.getString(KEY_TTS_ENGINE, "") ?: ""
         set(value) = prefs.edit().putString(KEY_TTS_ENGINE, value).apply()
+    
+    // TTS Type (local, elevenlabs, openai, voicevox)
+    var ttsType: String
+        get() = prefs.getString(KEY_TTS_TYPE, TTS_TYPE_LOCAL) ?: TTS_TYPE_LOCAL
+        set(value) = prefs.edit().putString(KEY_TTS_TYPE, value).apply()
+    
+    // ElevenLabs settings
+    var elevenLabsApiKey: String
+        get() = prefs.getString(KEY_ELEVENLABS_API_KEY, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_ELEVENLABS_API_KEY, value).apply()
+    
+    var elevenLabsVoiceId: String
+        get() = prefs.getString(KEY_ELEVENLABS_VOICE_ID, DEFAULT_ELEVENLABS_VOICE_ID) ?: DEFAULT_ELEVENLABS_VOICE_ID
+        set(value) = prefs.edit().putString(KEY_ELEVENLABS_VOICE_ID, value).apply()
+    
+    var elevenLabsModel: String
+        get() = prefs.getString(KEY_ELEVENLABS_MODEL, DEFAULT_ELEVENLABS_MODEL) ?: DEFAULT_ELEVENLABS_MODEL
+        set(value) = prefs.edit().putString(KEY_ELEVENLABS_MODEL, value).apply()
+    
+    var elevenLabsSpeed: Float
+        get() = prefs.getFloat(KEY_ELEVENLABS_SPEED, 1.0f)
+        set(value) = prefs.edit().putFloat(KEY_ELEVENLABS_SPEED, value.coerceIn(0.7f, 1.2f)).apply()
+    
+    // OpenAI settings
+    var openAiApiKey: String
+        get() = prefs.getString(KEY_OPENAI_API_KEY, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_OPENAI_API_KEY, value).apply()
+    
+    var openAiVoice: String
+        get() = prefs.getString(KEY_OPENAI_VOICE, DEFAULT_OPENAI_VOICE) ?: DEFAULT_OPENAI_VOICE
+        set(value) = prefs.edit().putString(KEY_OPENAI_VOICE, value).apply()
+    
+    var openAiModel: String
+        get() = prefs.getString(KEY_OPENAI_MODEL, DEFAULT_OPENAI_MODEL) ?: DEFAULT_OPENAI_MODEL
+        set(value) = prefs.edit().putString(KEY_OPENAI_MODEL, value).apply()
+    
+    // VOICEVOX settings
+    var voiceVoxSpeakerId: Int
+        get() = prefs.getInt(KEY_VOICEVOX_SPEAKER_ID, DEFAULT_VOICEVOX_SPEAKER_ID)
+        set(value) = prefs.edit().putInt(KEY_VOICEVOX_SPEAKER_ID, value).apply()
+    
+    var voiceVoxStyleId: Int
+        get() = prefs.getInt(KEY_VOICEVOX_STYLE_ID, DEFAULT_VOICEVOX_STYLE_ID)
+        set(value) = prefs.edit().putInt(KEY_VOICEVOX_STYLE_ID, value).apply()
+    
+    var voiceVoxTermsAccepted: Boolean
+        get() = prefs.getBoolean(KEY_VOICEVOX_TERMS_ACCEPTED, false)
+        set(value) = prefs.edit().putBoolean(KEY_VOICEVOX_TERMS_ACCEPTED, value).apply()
 
     // Gateway Port for WebSocket agent list connection (default 18789)
 
@@ -219,6 +267,19 @@ class SettingsRepository(context: Context) {
         private const val KEY_THINKING_SOUND_ENABLED = "thinking_sound_enabled"
         private const val KEY_SPEECH_LANGUAGE = "speech_language"
         private const val KEY_HAS_COMPLETED_SETUP = "has_completed_setup"
+        
+        // TTS settings keys
+        private const val KEY_TTS_TYPE = "tts_type"
+        private const val KEY_ELEVENLABS_API_KEY = "elevenlabs_api_key"
+        private const val KEY_ELEVENLABS_VOICE_ID = "elevenlabs_voice_id"
+        private const val KEY_ELEVENLABS_MODEL = "elevenlabs_model"
+        private const val KEY_ELEVENLABS_SPEED = "elevenlabs_speed"
+        private const val KEY_OPENAI_API_KEY = "openai_api_key"
+        private const val KEY_OPENAI_VOICE = "openai_voice"
+        private const val KEY_OPENAI_MODEL = "openai_model"
+        private const val KEY_VOICEVOX_SPEAKER_ID = "voicevox_speaker_id"
+        private const val KEY_VOICEVOX_STYLE_ID = "voicevox_style_id"
+        private const val KEY_VOICEVOX_TERMS_ACCEPTED = "voicevox_terms_accepted"
 
         // Wake word presets
         const val WAKE_WORD_OPEN_CLAW = "open_claw"
@@ -231,8 +292,24 @@ class SettingsRepository(context: Context) {
         const val CONNECTION_TYPE_HTTP = "http"
         
         const val GOOGLE_TTS_PACKAGE = "com.google.android.tts"
-
-
+        
+        // TTS Type constants
+        const val TTS_TYPE_LOCAL = "local"
+        const val TTS_TYPE_ELEVENLABS = "elevenlabs"
+        const val TTS_TYPE_OPENAI = "openai"
+        const val TTS_TYPE_VOICEVOX = "voicevox"
+        
+        // Default ElevenLabs voice ID (empty - user must set)
+        const val DEFAULT_ELEVENLABS_VOICE_ID = ""
+        const val DEFAULT_ELEVENLABS_MODEL = "eleven_multilingual_v2"
+        
+        // Default OpenAI voice
+        const val DEFAULT_OPENAI_VOICE = "coral"
+        const val DEFAULT_OPENAI_MODEL = "gpt-4o-mini-tts"
+        
+        // Default VOICEVOX speaker (none - user must select and download)
+        const val DEFAULT_VOICEVOX_SPEAKER_ID = 0
+        const val DEFAULT_VOICEVOX_STYLE_ID = 0  // 四国めたん あまあま ( Style ID 0 )
 
         @Volatile
         private var instance: SettingsRepository? = null

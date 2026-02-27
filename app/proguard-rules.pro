@@ -50,3 +50,20 @@
 # causing java.security.KeyStoreException: BKS not found at runtime.
 -keep class org.bouncycastle.** { *; }
 -dontwarn org.bouncycastle.**
+
+# VOICEVOX Core
+-keep class jp.hiroshiba.voicevoxcore.** { *; }
+-dontwarn jp.hiroshiba.voicevoxcore.**
+-dontwarn jakarta.annotation.**
+
+# TTS Providers (multi-provider architecture)
+# These classes are instantiated directly (not via reflection), but keeping them
+# ensures their inner classes and data classes survive R8 in release builds.
+-keep interface com.openclaw.assistant.speech.TTSProvider { *; }
+-keep class com.openclaw.assistant.speech.TTSState { *; }
+-keep class com.openclaw.assistant.speech.TTSState$* { *; }
+-keep class com.openclaw.assistant.speech.ElevenLabsProvider { *; }
+-keep class com.openclaw.assistant.speech.ElevenLabsProvider$* { *; }
+-keep class com.openclaw.assistant.speech.OpenAIProvider { *; }
+-keep class com.openclaw.assistant.speech.OpenAIProvider$* { *; }
+-keep class com.openclaw.assistant.speech.AndroidTTSProvider { *; }

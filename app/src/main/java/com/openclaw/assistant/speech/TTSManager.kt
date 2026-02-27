@@ -1,233 +1,218 @@
 package com.openclaw.assistant.speech
 
 import android.content.Context
-import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
 import android.util.Log
-import kotlinx.coroutines.channels.awaitClose
+import com.openclaw.assistant.BuildConfig
+import com.openclaw.assistant.R
+import com.openclaw.assistant.data.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import java.util.Locale
-import java.util.UUID
-import kotlin.coroutines.resume
 
 private const val TAG = "TTSManager"
 
 /**
- * Text-to-Speech (TTS) Manager with brute-force recovery for MIUI
+ * Text-to-Speech Manager with support for multiple providers
+ * (Local TTS, ElevenLabs, OpenAI, VOICEVOX)
  */
 class TTSManager(private val context: Context) {
-
-    private var tts: TextToSpeech? = null
-    private var isInitialized = false
-    private var pendingSpeak: (() -> Unit)? = null
-    private val settings = com.openclaw.assistant.data.SettingsRepository.getInstance(context)
-
+    
+    private val settings = SettingsRepository.getInstance(context)
+    
+    // Provider instances
+    private val providers = mutableMapOf<String, TTSProvider>()
+    
     init {
-        initializeWithBruteForce()
-    }
-
-    private fun initializeWithBruteForce() {
-        Log.e(TAG, "Force-starting TTS sequence...")
-        
-        val preferredEngine = settings.ttsEngine
-        
-        if (preferredEngine.isNotEmpty()) {
-             // 0. Try Preferred Engine
-            Log.e(TAG, "Attempting to initialize with preferred engine: $preferredEngine")
-            tts = TextToSpeech(context.applicationContext, { status ->
-                if (status == TextToSpeech.SUCCESS) {
-                    Log.e(TAG, "Initialized with preferred engine: $preferredEngine")
-                    onInitSuccess()
-                } else {
-                    Log.e(TAG, "Preferred engine failed, falling back to Google/Default")
-                     tryGoogleOrFallback()
-                }
-            }, preferredEngine)
-        } else {
-            tryGoogleOrFallback()
+        // Initialize all providers
+        providers[TTSProviderType.LOCAL] = AndroidTTSProvider(context)
+        providers[TTSProviderType.ELEVENLABS] = ElevenLabsProvider(context)
+        providers[TTSProviderType.OPENAI] = OpenAIProvider(context)
+        if (BuildConfig.FLAVOR == "full") {
+            providers[TTSProviderType.VOICEVOX] = VoiceVoxProvider(context)
         }
     }
     
-    private fun tryGoogleOrFallback() {
-        // 1. Try Google TTS explicitly
-        tts = TextToSpeech(context.applicationContext, { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                Log.e(TAG, "Initialized with Google engine")
-                onInitSuccess()
-            } else {
-                Log.e(TAG, "Google TTS failed, falling back to system default")
-                // 2. Try System Default
-                tts = TextToSpeech(context.applicationContext) { status2 ->
-                    if (status2 == TextToSpeech.SUCCESS) {
-                        Log.e(TAG, "Initialized with System Default engine")
-                        onInitSuccess()
-                    } else {
-                        Log.e(TAG, "FATAL: All TTS initialization attempts failed")
-                    }
-                }
-            }
-        }, TTSUtils.GOOGLE_TTS_PACKAGE)
-    }
-
-    private fun onInitSuccess() {
-        isInitialized = true
-        TTSUtils.setupVoice(tts, settings.ttsSpeed, settings.speechLanguage.ifEmpty { null })
-        pendingSpeak?.invoke()
-        pendingSpeak = null
-    }
-
     /**
-     * Attempts to "wake up" the engine if it was hidden or lost
+     * Get the currently configured provider
      */
-    fun reinitialize() {
-        isInitialized = false
-        tts?.shutdown()
-        initializeWithBruteForce()
+    private fun getCurrentProvider(): TTSProvider? {
+        val type = settings.ttsType
+        return providers[type]
     }
-
-    suspend fun speak(text: String): Boolean {
-        // Query the engine's actual max input length instead of assuming 4000
-        val maxLen = TTSUtils.getMaxInputLength(tts)
-        val chunks = TTSUtils.splitTextForTTS(text, maxLen)
-        Log.d(TAG, "TTS splitting text (${text.length} chars) into ${chunks.size} chunks (maxLen=$maxLen)")
-
-        for ((index, chunk) in chunks.withIndex()) {
-            val success = speakSingleChunk(chunk, index == 0)
-            if (!success) {
-                Log.e(TAG, "TTS chunk $index failed, aborting remaining chunks")
-                return false
-            }
-        }
-        return true
-    }
-
-    private suspend fun speakSingleChunk(text: String, isFirst: Boolean): Boolean {
-        // Scale timeout based on text length (minimum 30s, ~15s per 1000 chars)
-        val timeoutMs = (30_000L + (text.length * 15L)).coerceAtMost(120_000L)
-        val result = withTimeoutOrNull(timeoutMs) {
-            suspendCancellableCoroutine { continuation ->
-                val utteranceId = UUID.randomUUID().toString()
-                val started = java.util.concurrent.atomic.AtomicBoolean(false)
-
-                val listener = object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {
-                        started.set(true)
-                    }
-                    override fun onDone(utteranceId: String?) { if (continuation.isActive) continuation.resume(true) }
-                    override fun onStop(utteranceId: String?, interrupted: Boolean) { if (continuation.isActive) continuation.resume(false) }
-                    override fun onError(utteranceId: String?) { if (continuation.isActive) continuation.resume(false) }
-                }
-
-                if (isInitialized) {
-                    TTSUtils.applyUserConfig(tts, settings.ttsSpeed)
-                    tts?.setOnUtteranceProgressListener(listener)
-                    val queueMode = if (isFirst) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-                    val speakResult = tts?.speak(text, queueMode, null, utteranceId)
-                    if (speakResult != TextToSpeech.SUCCESS) {
-                        Log.e(TAG, "TTS speak failed immediately: $speakResult")
-                        if (continuation.isActive) continuation.resume(false)
-                    } else {
-                        // Polling fallback: only start polling AFTER onStart fires,
-                        // to avoid false-positive when engine hasn't begun speaking yet
-                        CoroutineScope(Dispatchers.Main).launch {
-                            // Wait for onStart (up to 10s)
-                            var waitedMs = 0L
-                            while (!started.get() && continuation.isActive && waitedMs < 10_000L) {
-                                delay(200)
-                                waitedMs += 200
-                            }
-                            if (!started.get() || !continuation.isActive) return@launch
-                            // Now poll isSpeaking - only treat false as "done" after speech started
-                            delay(1000)
-                            while (continuation.isActive) {
-                                val speaking = tts?.isSpeaking ?: false
-                                if (!speaking) {
-                                    Log.w(TAG, "TTS poll detected speech finished (callback missed)")
-                                    if (continuation.isActive) continuation.resume(true)
-                                    break
-                                }
-                                delay(500)
-                            }
-                        }
-                    }
-
-                    continuation.invokeOnCancellation { tts?.stop() }
-                } else {
-                    // Queue this chunk to be spoken once TTS initialization completes.
-                    // Compose with existing pending to preserve chunk ordering.
-                    val existingPending = pendingSpeak
-                    pendingSpeak = {
-                        existingPending?.invoke()
-                        TTSUtils.applyUserConfig(tts, settings.ttsSpeed)
-                        tts?.setOnUtteranceProgressListener(listener)
-                        val queueMode = if (isFirst) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-                        tts?.speak(text, queueMode, null, utteranceId)
-                    }
-                    // Wait up to 5s for init
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        if (continuation.isActive && !isInitialized) {
-                            continuation.resume(false)
-                        }
-                    }, 5000)
-                }
-            }
-        }
-
-        if (result == null) {
-            Log.w(TAG, "TTS chunk timed out, forcing stop")
-            tts?.stop()
+    
+    /**
+     * Check if current provider is configured and available
+     */
+    fun isReady(): Boolean {
+        val provider = getCurrentProvider()
+        if (provider == null) {
+            Log.e(TAG, "isReady: no provider for type '${settings.ttsType}'")
             return false
         }
-        return result
-    }
-
-    fun speakWithProgress(text: String): Flow<TTSState> = callbackFlow {
-        val utteranceId = UUID.randomUUID().toString()
-        val listener = object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) { trySend(TTSState.Speaking) }
-            override fun onDone(utteranceId: String?) { trySend(TTSState.Done); close() }
-            override fun onError(utteranceId: String?) { trySend(TTSState.Error("Error")); close() }
+        val available = provider.isAvailable()
+        val configured = provider.isConfigured()
+        if (!available || !configured) {
+            Log.e(TAG, "isReady: ${provider.getDisplayName()} available=$available configured=$configured error=${provider.getConfigurationError()}")
         }
-
-        if (isInitialized) {
-            TTSUtils.applyUserConfig(tts, settings.ttsSpeed)
-            tts?.setOnUtteranceProgressListener(listener)
-            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-            trySend(TTSState.Preparing)
-        } else {
-            trySend(TTSState.Preparing)
-            pendingSpeak = {
-                TTSUtils.applyUserConfig(tts, settings.ttsSpeed)
-                tts?.setOnUtteranceProgressListener(listener)
-                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+        return available && configured
+    }
+    
+    /**
+     * Get error message if not ready
+     */
+    fun getErrorMessage(): String? {
+        val provider = getCurrentProvider()
+        return when {
+            provider == null -> context.getString(R.string.tts_error_unknown_type, settings.ttsType)
+            !provider.isConfigured() -> provider.getConfigurationError()
+            !provider.isAvailable() -> context.getString(R.string.tts_error_provider_unavailable, provider.getDisplayName())
+            else -> null
+        }
+    }
+    
+    /**
+     * Speak the given text using the configured provider
+     */
+    suspend fun speak(text: String): Boolean {
+        val provider = getCurrentProvider()
+        if (provider == null) {
+            Log.e(TAG, "No provider found for type: ${settings.ttsType}")
+            return false
+        }
+        
+        if (!provider.isConfigured()) {
+            Log.e(TAG, "Provider not configured: ${provider.getConfigurationError()}")
+            return false
+        }
+        
+        if (!provider.isAvailable()) {
+            Log.e(TAG, "Provider not available: ${provider.getDisplayName()}")
+            return false
+        }
+        
+        // Preprocess text (strip markdown, etc.)
+        val processedText = TTSUtils.stripMarkdownForSpeech(text)
+        
+        return provider.speak(processedText)
+    }
+    
+    /**
+     * Speak with progress updates
+     */
+    fun speakWithProgress(text: String): Flow<TTSState> {
+        val provider = getCurrentProvider()
+        if (provider == null) {
+            return callbackFlow {
+                trySend(TTSState.Error("No provider found"))
+                close()
             }
         }
-        awaitClose { stop() }
+        
+        if (!provider.isConfigured()) {
+            return callbackFlow {
+                trySend(TTSState.Error(provider.getConfigurationError() ?: "Not configured"))
+                close()
+            }
+        }
+        
+        val processedText = TTSUtils.stripMarkdownForSpeech(text)
+        return provider.speakWithProgress(processedText)
     }
-
-    fun speakQueued(text: String) {
-        if (isInitialized) {
-            TTSUtils.applyUserConfig(tts, settings.ttsSpeed)
-            tts?.speak(text, TextToSpeech.QUEUE_ADD, null, UUID.randomUUID().toString())
+    
+    /**
+     * Stop current speech
+     */
+    fun stop() {
+        getCurrentProvider()?.stop()
+    }
+    
+    /**
+     * Stop all providers
+     */
+    fun stopAll() {
+        providers.values.forEach { it.stop() }
+    }
+    
+    /**
+     * Release all resources
+     */
+    fun shutdown() {
+        providers.values.forEach { it.shutdown() }
+        providers.clear()
+    }
+    
+    /**
+     * Reinitialize after settings change
+     */
+    fun reinitialize() {
+        shutdown()
+        providers[TTSProviderType.LOCAL] = AndroidTTSProvider(context)
+        providers[TTSProviderType.ELEVENLABS] = ElevenLabsProvider(context)
+        providers[TTSProviderType.OPENAI] = OpenAIProvider(context)
+        if (BuildConfig.FLAVOR == "full") {
+            providers[TTSProviderType.VOICEVOX] = VoiceVoxProvider(context)
         }
     }
-
-    fun stop() { tts?.stop() }
-    fun shutdown() { tts?.shutdown(); isInitialized = false }
-    fun isReady(): Boolean = isInitialized
-}
-
-sealed class TTSState {
-    object Preparing : TTSState()
-    object Speaking : TTSState()
-    object Done : TTSState()
-    data class Error(val message: String) : TTSState()
+    
+    /**
+     * Initialize the current provider (needed for VOICEVOX)
+     * Call this before using TTS
+     */
+    fun initializeCurrentProvider(): Boolean {
+        val provider = getCurrentProvider()
+        return if (BuildConfig.FLAVOR == "full" && provider is VoiceVoxProvider) {
+            provider.initialize()
+        } else {
+            true // Other providers don't need explicit initialization
+        }
+    }
+    
+    /**
+     * Get all available providers
+     */
+    fun getAvailableProviders(): List<TTSProviderInfo> {
+        return listOf(
+            TTSProviderInfo(
+                type = TTSProviderType.LOCAL,
+                displayName = context.getString(R.string.tts_provider_local_name),
+                description = context.getString(R.string.tts_provider_local_description),
+                isAvailable = true,
+                isConfigured = true
+            ),
+            TTSProviderInfo(
+                type = TTSProviderType.ELEVENLABS,
+                displayName = "ElevenLabs",
+                description = context.getString(R.string.tts_provider_elevenlabs_description),
+                isAvailable = true,
+                isConfigured = settings.elevenLabsApiKey.isNotBlank()
+            ),
+            TTSProviderInfo(
+                type = TTSProviderType.OPENAI,
+                displayName = "OpenAI",
+                description = "OpenAI TTS API",
+                isAvailable = true,
+                isConfigured = settings.openAiApiKey.isNotBlank()
+            ),
+            TTSProviderInfo(
+                type = TTSProviderType.VOICEVOX,
+                displayName = "VOICEVOX",
+                description = context.getString(R.string.tts_provider_voicevox_description),
+                isAvailable = providers[TTSProviderType.VOICEVOX]?.isAvailable() == true,
+                isConfigured = settings.voiceVoxTermsAccepted &&
+                              providers[TTSProviderType.VOICEVOX]?.isAvailable() == true
+            )
+        )
+    }
+    
+    /**
+     * Get provider instance by type
+     */
+    fun getProvider(type: String): TTSProvider? = providers[type]
+    
+    data class TTSProviderInfo(
+        val type: String,
+        val displayName: String,
+        val description: String,
+        val isAvailable: Boolean,
+        val isConfigured: Boolean
+    )
 }

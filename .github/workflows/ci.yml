@@ -64,11 +64,17 @@ jobs:
       - name: Run Lint
         run: ./gradlew lint
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Build Debug APKs (Standard & Full)
+        run: ./gradlew assembleStandardDebug assembleFullDebug
 
-      - name: Upload APK
+      - name: Upload Standard Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/standard/debug/*.apk
+
+      - name: Upload Full (VOICEVOX) Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk-in-VOICEVOX
+          path: app/build/outputs/apk/full/debug/*.apk
