@@ -4,6 +4,7 @@ import com.openclaw.assistant.gateway.GatewaySession
 import com.openclaw.assistant.protocol.OpenClawCanvasA2UICommand
 import com.openclaw.assistant.protocol.OpenClawCanvasCommand
 import com.openclaw.assistant.protocol.OpenClawCameraCommand
+import com.openclaw.assistant.protocol.OpenClawDeviceCommand
 import com.openclaw.assistant.protocol.OpenClawLocationCommand
 import com.openclaw.assistant.protocol.OpenClawScreenCommand
 import com.openclaw.assistant.protocol.OpenClawSmsCommand
@@ -14,6 +15,7 @@ class InvokeDispatcher(
   private val locationHandler: LocationHandler,
   private val screenHandler: ScreenHandler,
   private val smsHandler: SmsHandler,
+  private val deviceHandler: DeviceHandler,
   private val a2uiHandler: A2UIHandler,
   private val debugHandler: DebugHandler,
   private val appUpdateHandler: AppUpdateHandler,
@@ -158,6 +160,12 @@ class InvokeDispatcher(
 
       // SMS command
       OpenClawSmsCommand.Send.rawValue -> smsHandler.handleSmsSend(paramsJson)
+
+      // Device commands
+      OpenClawDeviceCommand.Info.rawValue -> deviceHandler.handleDeviceInfo()
+      OpenClawDeviceCommand.Status.rawValue -> deviceHandler.handleDeviceStatus()
+      OpenClawDeviceCommand.Permissions.rawValue -> deviceHandler.handleDevicePermissions()
+      OpenClawDeviceCommand.Health.rawValue -> deviceHandler.handleDeviceHealth()
 
       // Debug commands
       "debug.ed25519" -> debugHandler.handleEd25519()
