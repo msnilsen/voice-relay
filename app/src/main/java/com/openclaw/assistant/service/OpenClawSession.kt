@@ -269,12 +269,12 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     private var speakingJob: Job? = null
 
     private fun startListening() {
+        Log.d(TAG, "startListening() called, currentState=${currentState.value}, listeningJob=${listeningJob}, speakingJob=${speakingJob}")
         listeningJob?.cancel()
         
         currentState.value = AssistantState.PROCESSING
-        // displayText.value = "" // Don't clear immediately to keep context if needed, or clear? Let's clear for fresh start.
         displayText.value = ""
-        userQuery.value = "" // Clear previous user query on new listening start
+        userQuery.value = ""
         partialText.value = ""
         errorMessage.value = null
         audioLevel.value = 0f
@@ -301,10 +301,11 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                         android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                 }
 
-                val listenResult = withTimeoutOrNull(15_000L) {
+                val listenResult = withTimeoutOrNull(30_000L) {
                     speechManager.startListening(settings.speechLanguage.ifEmpty { null }, settings.speechSilenceTimeout).collectLatest { result ->
                         when (result) {
                             is SpeechResult.Ready -> {
+                                Log.d(TAG, "SpeechResult.Ready received, transitioning to LISTENING")
                                 currentState.value = AssistantState.LISTENING
                                 toneGenerator.startTone(android.media.ToneGenerator.TONE_PROP_BEEP)
                             }
@@ -327,6 +328,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                                 }
                             }
                             is SpeechResult.Result -> {
+                                Log.d(TAG, "SpeechResult.Result received: text='${result.text}'")
                                 hasActuallySpoken = true
                                 userQuery.value = result.text
                                 sendToOpenClaw(result.text)
@@ -343,8 +345,15 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                                     delay(1000)
                                 } else if (isTimeout) {
                                     // Timeout - close session without error screen
-                                    toneGenerator.startTone(android.media.ToneGenerator.TONE_PROP_NACK, 100)
-                                    finish() // Close the session
+                                    // But only if AI is not currently thinking or speaking
+                                    val state = currentState.value
+                                    if (state == AssistantState.THINKING || state == AssistantState.SPEAKING) {
+                                        Log.d(TAG, "Speech timeout but AI is $state, not closing session")
+                                        hasActuallySpoken = true // break the loop but don't finish
+                                    } else {
+                                        toneGenerator.startTone(android.media.ToneGenerator.TONE_PROP_NACK, 100)
+                                        finish() // Close the session
+                                    }
                                 } else {
                                     toneGenerator.startTone(android.media.ToneGenerator.TONE_PROP_NACK, 100)
                                     currentState.value = AssistantState.ERROR
@@ -358,10 +367,16 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                 }
 
                 if (listenResult == null && !hasActuallySpoken) {
-                    Log.w(TAG, "Speech recognition timed out (15s). Device may be locked.")
-                    // Manual timeout - close session without error screen
-                    finish() // Close the session
-                    hasActuallySpoken = true
+                    Log.w(TAG, "Speech recognition timed out (30s). Device may be locked.")
+                    // Manual timeout - only close session if not thinking/speaking
+                    val state = currentState.value
+                    if (state == AssistantState.THINKING || state == AssistantState.SPEAKING) {
+                        Log.d(TAG, "Manual timeout but AI is $state, not closing session")
+                        hasActuallySpoken = true // break the loop but don't finish
+                    } else {
+                        finish() // Close the session
+                        hasActuallySpoken = true
+                    }
                 }
                 
                 if (!hasActuallySpoken) {
@@ -391,6 +406,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     }
 
     private fun sendToOpenClaw(message: String) {
+        Log.d(TAG, "sendToOpenClaw() called, transitioning to THINKING")
         currentState.value = AssistantState.THINKING
         toneGenerator.startTone(android.media.ToneGenerator.TONE_PROP_ACK, 150)
         startThinkingSound()
@@ -470,6 +486,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     }
 
     private fun speakResponse(text: String) {
+        Log.d(TAG, "speakResponse() called, text length=${text.length}")
         stopThinkingSound()
         currentState.value = AssistantState.SPEAKING
         val cleanText = TTSUtils.stripMarkdownForSpeech(text)
@@ -492,6 +509,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                 if (success) {
                     // After speech completion, if continuous conversation mode is enabled, start listening again
                     if (settings.continuousMode) {
+                        Log.d(TAG, "TTS complete, continuous mode ON. Starting 2nd rally startListening() in 500ms")
                         delay(500)
                         startListening()
                     } else {

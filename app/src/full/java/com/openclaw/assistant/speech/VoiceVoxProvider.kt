@@ -12,7 +12,7 @@ import jp.hiroshiba.voicevoxcore.blocking.Synthesizer
 import jp.hiroshiba.voicevoxcore.blocking.VoiceModelFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -189,7 +189,7 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
         }
     }
     
-    private suspend fun playWav(wavData: ByteArray): Boolean = withContext(Dispatchers.IO) {
+    private suspend fun playWav(wavData: ByteArray, onStarted: (() -> Unit)? = null): Boolean = withContext(Dispatchers.IO) {
         try {
             val tempFile = File.createTempFile("voicevox_", ".wav", context.cacheDir)
             FileOutputStream(tempFile).use { it.write(wavData) }
@@ -199,7 +199,10 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
                     mediaPlayer?.release()
                     mediaPlayer = MediaPlayer().apply {
                         setDataSource(tempFile.absolutePath)
-                        setOnPreparedListener { start() }
+                        setOnPreparedListener {
+                            start()
+                            onStarted?.invoke()
+                        }
                         setOnCompletionListener {
                             continuation.resume(true)
                         }
@@ -273,21 +276,50 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
         }
     }
     
-    override fun speakWithProgress(text: String): Flow<TTSState> = flow {
-        emit(TTSState.Preparing)
+    override fun speakWithProgress(text: String): Flow<TTSState> = channelFlow {
+        send(TTSState.Preparing)
         
         if (!isConfigured()) {
-            emit(TTSState.Error(getConfigurationError() ?: "Not configured"))
-            return@flow
+            send(TTSState.Error(getConfigurationError() ?: "Not configured"))
+            return@channelFlow
         }
         
-        emit(TTSState.Speaking)
-        
-        val success = speak(text)
-        if (success) {
-            emit(TTSState.Done)
-        } else {
-            emit(TTSState.Error("Failed to synthesize or play"))
+        try {
+            val styleId = settings.voiceVoxStyleId
+            
+            if (!loadVoiceModel(styleId)) {
+                send(TTSState.Error("Failed to load voice model"))
+                return@channelFlow
+            }
+            
+            val synth = this@VoiceVoxProvider.synthesizer
+            if (synth == null) {
+                send(TTSState.Error("Synthesizer not available"))
+                return@channelFlow
+            }
+            
+            // Synthesize audio (this is the slow part)
+            val audioQuery = withContext(Dispatchers.IO) {
+                synth.createAudioQuery(text, styleId)
+            }
+            audioQuery.speedScale = settings.ttsSpeed.toDouble()
+            val wavData = withContext(Dispatchers.IO) {
+                synth.synthesis(audioQuery, styleId).perform()
+            }
+            
+            // Play audio - Speaking state emitted only when playback actually starts
+            val success = playWav(wavData) {
+                trySend(TTSState.Speaking)
+            }
+            
+            if (success) {
+                send(TTSState.Done)
+            } else {
+                send(TTSState.Error("Failed to play audio"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "speakWithProgress error: ${e.message}", e)
+            send(TTSState.Error(e.message ?: "Unknown error"))
         }
     }
     

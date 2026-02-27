@@ -38,6 +38,7 @@ data class ChatUiState(
     val isListening: Boolean = false,
     val isThinking: Boolean = false,
     val isSpeaking: Boolean = false,
+    val isPreparingSpeech: Boolean = false,
     val error: String? = null,
     val partialText: String = "", // For real-time speech transcription
     val availableAgents: List<AgentInfo> = emptyList(),
@@ -650,7 +651,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private fun speak(text: String) {
         val cleanText = com.openclaw.assistant.speech.TTSUtils.stripMarkdownForSpeech(text)
         speakingJob = viewModelScope.launch {
-            _uiState.update { it.copy(isSpeaking = true) }
+            _uiState.update { it.copy(isPreparingSpeech = true) }
 
             try {
                 val manager = ttsManager
@@ -665,7 +666,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     false
                 }
 
-                _uiState.update { it.copy(isSpeaking = false) }
+                _uiState.update { it.copy(isSpeaking = false, isPreparingSpeech = false) }
 
                 // If it was a voice conversation and continuous mode is on, continue listening
                 if (success && lastInputWasVoice && settings.continuousMode) {
@@ -682,7 +683,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "TTS speak error", e)
-                _uiState.update { it.copy(isSpeaking = false) }
+                _uiState.update { it.copy(isSpeaking = false, isPreparingSpeech = false) }
                 ttsManager?.stop()
                 releaseWakeLock()
                 sendResumeBroadcast()
@@ -720,6 +721,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     }
                     is TTSState.Speaking -> {
                         Log.d(TAG, "TTS Speaking")
+                        _uiState.update { it.copy(isPreparingSpeech = false, isSpeaking = true) }
                     }
                     is TTSState.Done -> {
                         Log.d(TAG, "TTS Done")
@@ -744,16 +746,26 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         ttsManager?.stop()
         speakingJob?.cancel()
         speakingJob = null
-        _uiState.update { it.copy(isSpeaking = false) }
+        _uiState.update { it.copy(isSpeaking = false, isPreparingSpeech = false) }
         releaseWakeLock()
         sendResumeBroadcast()
+    }
+
+    /**
+     * Returns true if a voice conversation is currently active
+     * (listening, thinking after voice input, or speaking a voice response).
+     * Used by ChatActivity to avoid stopping the session when the screen turns off.
+     */
+    fun isVoiceSessionActive(): Boolean {
+        val state = _uiState.value
+        return lastInputWasVoice && (state.isListening || state.isThinking || state.isSpeaking)
     }
 
     fun interruptAndListen() {
         ttsManager?.stop()
         speakingJob?.cancel()
         speakingJob = null
-        _uiState.update { it.copy(isSpeaking = false) }
+        _uiState.update { it.copy(isSpeaking = false, isPreparingSpeech = false) }
         sendPauseBroadcast()
         startListening()
     }
@@ -768,7 +780,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             android.os.PowerManager.PARTIAL_WAKE_LOCK,
             "OpenClawAssistant::ChatWakeLock"
         ).apply {
-            acquire(5 * 60 * 1000L) // 5 min max to prevent leak
+            acquire(10 * 60 * 1000L) // 10 min max to prevent leak
         }
         Log.d(TAG, "WakeLock acquired")
     }

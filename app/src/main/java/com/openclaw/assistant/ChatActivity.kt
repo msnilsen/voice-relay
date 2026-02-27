@@ -174,11 +174,15 @@ class ChatActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Stop any ongoing speech recognition before releasing the mic
-        viewModel.stopListening()
-        // Resume hotword detection now that the mic will be released.
-        // setPackage is required to reach NodeForegroundService (RECEIVER_NOT_EXPORTED).
-        sendBroadcast(Intent(HotwordService.ACTION_RESUME_HOTWORD).apply { setPackage(packageName) })
+        // Only stop listening if we are NOT in an active voice conversation.
+        // During voice interaction (listening/speaking/thinking), keep the session alive
+        // even when the screen turns off. The WakeLock in ChatViewModel keeps the CPU alive.
+        if (!viewModel.isVoiceSessionActive()) {
+            viewModel.stopListening()
+            // Resume hotword detection now that the mic will be released.
+            // setPackage is required to reach NodeForegroundService (RECEIVER_NOT_EXPORTED).
+            sendBroadcast(Intent(HotwordService.ACTION_RESUME_HOTWORD).apply { setPackage(packageName) })
+        }
     }
 
     override fun onDestroy() {
@@ -260,7 +264,7 @@ fun ChatScreen(
 
     // Scroll to bottom effect (animate when size changes)
     var previousItemCount by remember { mutableIntStateOf(groupedItems.size) }
-    LaunchedEffect(groupedItems.size, uiState.isThinking, uiState.isSpeaking, uiState.pendingToolCalls.size) {
+    LaunchedEffect(groupedItems.size, uiState.isThinking, uiState.isSpeaking, uiState.isPreparingSpeech, uiState.pendingToolCalls.size) {
         if (groupedItems.size > previousItemCount + 1 || previousItemCount == 0) {
             listState.scrollToItem(0)
         } else {
@@ -386,6 +390,9 @@ fun ChatScreen(
                     ) {
                         if (uiState.pendingToolCalls.isNotEmpty()) {
                             item { PendingToolsIndicator(uiState.pendingToolCalls) }
+                        }
+                        if (uiState.isPreparingSpeech) {
+                            item { PreparingSpeechIndicator() }
                         }
                         if (uiState.isSpeaking) {
                             item { SpeakingIndicator(onStop = onStopSpeaking) }
@@ -585,6 +592,35 @@ fun SpeakingIndicator(onStop: () -> Unit) {
             IconButton(onClick = onStop, modifier = Modifier.size(24.dp)) {
                 Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.stop_description), tint = MaterialTheme.colorScheme.onErrorContainer)
             }
+        }
+    }
+}
+
+@Composable
+fun PreparingSpeechIndicator() {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(vertical = 8.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.secondary
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                stringResource(R.string.preparing_speech),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+            )
         }
     }
 }

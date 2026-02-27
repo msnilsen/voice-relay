@@ -7,7 +7,8 @@ import com.openclaw.assistant.R
 import com.openclaw.assistant.data.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -112,13 +113,14 @@ class ElevenLabsProvider(private val context: Context) : TTSProvider {
         }
     }
     
-    private suspend fun playAudioFile(file: File): Boolean = suspendCancellableCoroutine { continuation ->
+    private suspend fun playAudioFile(file: File, onStarted: (() -> Unit)? = null): Boolean = suspendCancellableCoroutine { continuation ->
         try {
             mediaPlayer?.release()
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(file.absolutePath)
                 setOnPreparedListener {
                     start()
+                    onStarted?.invoke()
                 }
                 setOnCompletionListener {
                     continuation.resume(true)
@@ -180,12 +182,12 @@ class ElevenLabsProvider(private val context: Context) : TTSProvider {
         } else null
     }
     
-    override fun speakWithProgress(text: String): Flow<TTSState> = flow {
-        emit(TTSState.Preparing)
+    override fun speakWithProgress(text: String): Flow<TTSState> = channelFlow {
+        send(TTSState.Preparing)
         
         if (!isConfigured()) {
-            emit(TTSState.Error(getConfigurationError() ?: context.getString(R.string.tts_error_not_initialized)))
-            return@flow
+            send(TTSState.Error(getConfigurationError() ?: context.getString(R.string.tts_error_not_initialized)))
+            return@channelFlow
         }
         
         // Synthesize speech (API call)
@@ -197,8 +199,8 @@ class ElevenLabsProvider(private val context: Context) : TTSProvider {
         }
         
         if (audioData == null) {
-            emit(TTSState.Error("Failed to synthesize speech"))
-            return@flow
+            send(TTSState.Error("Failed to synthesize speech"))
+            return@channelFlow
         }
         
         // Save to temp file
@@ -208,13 +210,14 @@ class ElevenLabsProvider(private val context: Context) : TTSProvider {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save audio", e)
-            emit(TTSState.Error("Failed to save audio"))
-            return@flow
+            send(TTSState.Error("Failed to save audio"))
+            return@channelFlow
         }
         
-        // Play audio
-        emit(TTSState.Speaking)
-        val success = playAudioFile(tempFile)
+        // Play audio - Speaking state emitted only when playback actually starts
+        val success = playAudioFile(tempFile) {
+            trySend(TTSState.Speaking)
+        }
         
         // Cleanup
         try {
@@ -224,9 +227,9 @@ class ElevenLabsProvider(private val context: Context) : TTSProvider {
         }
         
         if (success) {
-            emit(TTSState.Done)
+            send(TTSState.Done)
         } else {
-            emit(TTSState.Error("Failed to play audio"))
+            send(TTSState.Error("Failed to play audio"))
         }
     }
     
