@@ -97,6 +97,11 @@ class NodeRuntime(context: Context) {
     connectedEndpoint = { connectedEndpoint },
   )
 
+  private val deviceHandler: DeviceHandler = DeviceHandler(
+    appContext = appContext,
+    prefs = prefs,
+  )
+
   private val locationHandler: LocationHandler = LocationHandler(
     appContext = appContext,
     location = location,
@@ -143,6 +148,7 @@ class NodeRuntime(context: Context) {
     a2uiHandler = a2uiHandler,
     debugHandler = debugHandler,
     appUpdateHandler = appUpdateHandler,
+    deviceHandler = deviceHandler,
     isForeground = { _isForeground.value },
     cameraEnabled = { cameraEnabled.value },
     locationEnabled = { locationMode.value != LocationMode.Off },

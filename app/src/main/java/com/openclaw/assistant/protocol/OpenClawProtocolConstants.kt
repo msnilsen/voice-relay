@@ -62,6 +62,18 @@ enum class OpenClawSmsCommand(val rawValue: String) {
     }
 }
 
+enum class OpenClawDeviceCommand(val rawValue: String) {
+    Status("device.status"),
+    Info("device.info"),
+    Permissions("device.permissions"),
+    Health("device.health"),
+    ;
+
+    companion object {
+        const val NamespacePrefix: String = "device."
+    }
+}
+
 enum class OpenClawLocationCommand(val rawValue: String) {
     Get("location.get"),
     ;
