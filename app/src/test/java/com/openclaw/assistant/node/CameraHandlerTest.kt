@@ -37,8 +37,8 @@ class CameraHandlerTest {
   @Test
   fun `handleList returns correct json`() = runTest {
     coEvery { camera.list() } returns listOf(
-      CameraCaptureManager.CameraInfo("0", "back"),
-      CameraCaptureManager.CameraInfo("1", "front")
+      CameraCaptureManager.Device("0", "back"),
+      CameraCaptureManager.Device("1", "front")
     )
 
     val result = handler.handleList(null)

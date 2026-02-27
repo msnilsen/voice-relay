@@ -41,7 +41,7 @@ import kotlin.coroutines.resumeWithException
 class CameraCaptureManager(private val context: Context) {
   data class Payload(val payloadJson: String)
   data class FilePayload(val file: File, val durationMs: Long, val hasAudio: Boolean)
-  data class CameraInfo(val id: String, val facing: String)
+  data class Device(val id: String, val facing: String)
 
   @Volatile private var lifecycleOwner: LifecycleOwner? = null
   @Volatile private var permissionRequester: PermissionRequester? = null
@@ -79,7 +79,7 @@ class CameraCaptureManager(private val context: Context) {
   }
 
   @SuppressLint("UnsafeOptInUsageError")
-  suspend fun list(): List<CameraInfo> =
+  suspend fun list(): List<Device> =
     withContext(Dispatchers.Main) {
       ensureCameraPermission()
       val provider = context.cameraProvider()
@@ -91,7 +91,7 @@ class CameraCaptureManager(private val context: Context) {
             else -> "external"
           }
         val id = Camera2CameraInfo.from(info).cameraId
-        CameraInfo(id, facing)
+        Device(id, facing)
       }
     }
 
