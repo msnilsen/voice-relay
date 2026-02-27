@@ -92,6 +92,7 @@ class ConnectionManager(
       add(OpenClawCanvasA2UICommand.Reset.rawValue)
       add(OpenClawScreenCommand.Record.rawValue)
       if (cameraEnabled()) {
+        add(OpenClawCameraCommand.List.rawValue)
         add(OpenClawCameraCommand.Snap.rawValue)
         add(OpenClawCameraCommand.Clip.rawValue)
       }

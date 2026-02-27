@@ -12,6 +12,11 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.asRequestBody
 
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.putJsonArray
+
 class CameraHandler(
   private val appContext: Context,
   private val camera: CameraCaptureManager,
@@ -22,6 +27,26 @@ class CameraHandler(
   private val triggerCameraFlash: () -> Unit,
   private val invokeErrorFromThrowable: (err: Throwable) -> Pair<String, String>,
 ) {
+
+  suspend fun handleList(): GatewaySession.InvokeResult {
+    try {
+      val devices = camera.list()
+      val payload = buildJsonObject {
+        putJsonArray("devices") {
+          devices.forEach { device ->
+            add(buildJsonObject {
+              put("id", device.id)
+              put("facing", device.facing)
+            })
+          }
+        }
+      }.toString()
+      return GatewaySession.InvokeResult.ok(payload)
+    } catch (err: Throwable) {
+      val (code, message) = invokeErrorFromThrowable(err)
+      return GatewaySession.InvokeResult.error(code = code, message = message)
+    }
+  }
 
   suspend fun handleSnap(paramsJson: String?): GatewaySession.InvokeResult {
     val logFile = if (BuildConfig.DEBUG) java.io.File(appContext.cacheDir, "camera_debug.log") else null
