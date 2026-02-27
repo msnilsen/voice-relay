@@ -174,7 +174,7 @@ class VoiceVoxProvider(private val context: Context) : TTSProvider {
             }
             
             val synthesizer = this@VoiceVoxProvider.synthesizer ?: return@withContext false
-            
+
             // Get audio query and adjust speed
             val audioQuery = synthesizer.createAudioQuery(text, styleId)
             audioQuery.speedScale = settings.ttsSpeed.toDouble()

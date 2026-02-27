@@ -44,6 +44,7 @@ import com.openclaw.assistant.ui.components.StatusIndicator
 import com.openclaw.assistant.gateway.AgentInfo
 import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.openclaw.assistant.utils.GatewayConfigUtils
 import com.openclaw.assistant.utils.SystemInfoProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -248,7 +249,6 @@ fun SettingsScreen(
     // VOICEVOX
     var voiceVoxStyleId by rememberSaveable { mutableStateOf(settings.voiceVoxStyleId) }
     var voiceVoxTermsAccepted by rememberSaveable { mutableStateOf(settings.voiceVoxTermsAccepted) }
-    var showVoiceVoxSetup by rememberSaveable { mutableStateOf(false) }
     
     var availableEngines by remember { mutableStateOf<List<com.openclaw.assistant.speech.TTSEngineUtils.EngineInfo>>(emptyList()) }
     var showEngineMenu by rememberSaveable { mutableStateOf(false) }
@@ -275,6 +275,11 @@ fun SettingsScreen(
     var gatewayPassword by rememberSaveable { mutableStateOf(runtime.getGatewayPassword() ?: "") }
     var showGatewayPassword by rememberSaveable { mutableStateOf(false) }
     var usePasswordAuth by rememberSaveable { mutableStateOf(runtime.getGatewayPassword()?.isNotEmpty() == true) }
+
+    // Setup code (quick-config from `openclaw qr --setup-code-only`)
+    var setupCode by rememberSaveable { mutableStateOf("") }
+    var setupCodeApplied by rememberSaveable { mutableStateOf(false) }
+    var setupCodeError by rememberSaveable { mutableStateOf(false) }
 
     // HTTP inputs
     var httpInputUrl by rememberSaveable { mutableStateOf(httpUrl) }
@@ -463,6 +468,59 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         if (selectedTabIndex == 0) {
+                            // Setup Code quick-config (from `openclaw qr --setup-code-only`)
+                            OutlinedTextField(
+                                value = setupCode,
+                                onValueChange = {
+                                    setupCode = it
+                                    setupCodeApplied = false
+                                    setupCodeError = false
+                                },
+                                label = { Text(stringResource(R.string.setup_guide_setup_code_label)) },
+                                placeholder = { Text(stringResource(R.string.setup_guide_setup_code_hint)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                trailingIcon = {
+                                    if (setupCode.isNotBlank()) {
+                                        TextButton(
+                                            onClick = {
+                                                val decoded = GatewayConfigUtils.decodeGatewaySetupCode(setupCode)
+                                                if (decoded != null) {
+                                                    val parsed = GatewayConfigUtils.parseGatewayEndpoint(decoded.url)
+                                                    if (parsed != null) {
+                                                        gatewayHost = parsed.host
+                                                        gatewayPort = parsed.port.toString()
+                                                        gatewayTls = parsed.tls
+                                                        if (decoded.password != null) {
+                                                            usePasswordAuth = true
+                                                            gatewayPassword = decoded.password
+                                                        } else if (decoded.token != null) {
+                                                            usePasswordAuth = false
+                                                            gatewayToken = decoded.token
+                                                        }
+                                                        setupCodeApplied = true
+                                                        setupCodeError = false
+                                                        testResult = null
+                                                    } else {
+                                                        setupCodeError = true
+                                                    }
+                                                } else {
+                                                    setupCodeError = true
+                                                }
+                                            }
+                                        ) { Text(stringResource(R.string.apply)) }
+                                    }
+                                },
+                                isError = setupCodeError,
+                                supportingText = when {
+                                    setupCodeApplied -> { { Text(stringResource(R.string.setup_code_applied), color = MaterialTheme.colorScheme.primary) } }
+                                    setupCodeError -> { { Text(stringResource(R.string.setup_code_invalid_code), color = MaterialTheme.colorScheme.error) } }
+                                    else -> null
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
                             Text(stringResource(R.string.gateway_configuration), style = MaterialTheme.typography.titleSmall)
                             Spacer(modifier = Modifier.height(8.dp))
 
@@ -981,9 +1039,6 @@ fun SettingsScreen(
                                         onClick = {
                                             ttsType = SettingsRepository.TTS_TYPE_VOICEVOX
                                             showTtsTypeMenu = false
-                                            if (!voiceVoxTermsAccepted) {
-                                                showVoiceVoxSetup = true
-                                            }
                                         },
                                         leadingIcon = {
                                             if (ttsType == SettingsRepository.TTS_TYPE_VOICEVOX) {
@@ -1028,11 +1083,7 @@ fun SettingsScreen(
                                         styleId = voiceVoxStyleId,
                                         onStyleIdChange = { voiceVoxStyleId = it },
                                         termsAccepted = voiceVoxTermsAccepted,
-                                        onTermsAcceptedChange = { voiceVoxTermsAccepted = it },
-                                        onShowSetup = { showVoiceVoxSetup = true },
-                                        onSetupComplete = { 
-                                            // Refresh will happen when dialog closes and recomposition occurs
-                                        }
+                                        onTermsAcceptedChange = { voiceVoxTermsAccepted = it }
                                     )
                                 }
                             }
@@ -1395,16 +1446,6 @@ fun SettingsScreen(
         }
     }
 
-    // VoiceVox Setup Dialog
-    if (showVoiceVoxSetup) {
-        VoiceVoxSetupDialog(
-            onDismiss = { showVoiceVoxSetup = false },
-            onComplete = { 
-                voiceVoxTermsAccepted = true
-                showVoiceVoxSetup = false
-            }
-        )
-    }
 }
 
 data class TestResult(
@@ -1751,8 +1792,6 @@ fun VoiceVoxSettingsCard(
     onStyleIdChange: (Int) -> Unit,
     termsAccepted: Boolean,
     onTermsAcceptedChange: (Boolean) -> Unit,
-    onShowSetup: () -> Unit,
-    onSetupComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -1760,19 +1799,20 @@ fun VoiceVoxSettingsCard(
     var showDeleteConfirmDialog by rememberSaveable { mutableStateOf(false) }
     var vvmToDelete by rememberSaveable { mutableStateOf<String?>(null) }
     var showCharacterDropdown by rememberSaveable { mutableStateOf(false) }
-    
+    var showSetupDialog by rememberSaveable { mutableStateOf(false) }
+
     // Use VoiceVoxModelManager to check actual download status
     val modelManager = remember { com.openclaw.assistant.speech.VoiceVoxModelManager(context) }
-    
+
     // Get list of downloaded VVM files (not characters)
     var downloadedVvmFiles by remember { mutableStateOf(listOf<String>()) }
-    
+
     // Function to refresh status
     fun refreshStatus() {
         downloadedVvmFiles = modelManager.getDownloadedVvmFiles()
     }
-    
-    // Refresh every time the card is recomposed (including when dialog closes)
+
+    // Refresh whenever termsAccepted changes
     LaunchedEffect(termsAccepted) {
         refreshStatus()
     }
@@ -2038,7 +2078,7 @@ fun VoiceVoxSettingsCard(
             
             // Download/Redownload button
             Button(
-                onClick = onShowSetup,
+                onClick = { showSetupDialog = true },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isReady) {
@@ -2113,7 +2153,7 @@ fun VoiceVoxSettingsCard(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { 
+                TextButton(onClick = {
                     showDeleteConfirmDialog = false
                     vvmToDelete = null
                 }) {
@@ -2122,10 +2162,24 @@ fun VoiceVoxSettingsCard(
             }
         )
     }
+
+    // Setup Dialog - managed internally so refreshStatus() can be called on completion
+    if (showSetupDialog) {
+        VoiceVoxSetupDialog(
+            vvmFileName = selectedVvmFile,
+            onDismiss = { showSetupDialog = false },
+            onComplete = {
+                onTermsAcceptedChange(true)
+                showSetupDialog = false
+                refreshStatus()
+            }
+        )
+    }
 }
 
 @Composable
 fun VoiceVoxSetupDialog(
+    vvmFileName: String,
     onDismiss: () -> Unit,
     onComplete: () -> Unit
 ) {
@@ -2135,31 +2189,49 @@ fun VoiceVoxSetupDialog(
     var hasError by rememberSaveable { mutableStateOf(false) }
     var errorMessage by rememberSaveable { mutableStateOf("") }
     var isComplete by rememberSaveable { mutableStateOf(false) }
-    
-    val scope = rememberCoroutineScope()
+
     val context = LocalContext.current
-    
-    // Simulate download progress
+    val modelManager = remember { com.openclaw.assistant.speech.VoiceVoxModelManager(context) }
+
+    // Actual download progress
     LaunchedEffect(currentStep) {
         when (currentStep) {
             1 -> {
-                // OpenJTalk dictionary copy
+                // Copy OpenJTalk dictionary from assets
                 hasError = false
                 dictionaryProgress = 0f
-                while (dictionaryProgress < 1f) {
-                    delay(100)
-                    dictionaryProgress += 0.05f
+                modelManager.copyDictionaryFromAssets().collect { progress ->
+                    when (progress) {
+                        is com.openclaw.assistant.speech.VoiceVoxModelManager.CopyProgress.Copying ->
+                            dictionaryProgress = progress.percent / 100f
+                        is com.openclaw.assistant.speech.VoiceVoxModelManager.CopyProgress.Success -> {
+                            dictionaryProgress = 1f
+                            currentStep = 2
+                        }
+                        is com.openclaw.assistant.speech.VoiceVoxModelManager.CopyProgress.Error -> {
+                            hasError = true
+                            errorMessage = progress.message
+                        }
+                    }
                 }
-                currentStep = 2
             }
             2 -> {
-                // VVM model download
+                // Download VVM model file
                 modelProgress = 0f
-                while (modelProgress < 1f) {
-                    delay(200)
-                    modelProgress += 0.03f
+                modelManager.downloadVvmModel(vvmFileName).collect { progress ->
+                    when (progress) {
+                        is com.openclaw.assistant.speech.VoiceVoxModelManager.DownloadProgress.Downloading ->
+                            modelProgress = progress.percent / 100f
+                        is com.openclaw.assistant.speech.VoiceVoxModelManager.DownloadProgress.Success -> {
+                            modelProgress = 1f
+                            isComplete = true
+                        }
+                        is com.openclaw.assistant.speech.VoiceVoxModelManager.DownloadProgress.Error -> {
+                            hasError = true
+                            errorMessage = progress.message
+                        }
+                    }
                 }
-                isComplete = true
             }
         }
     }
