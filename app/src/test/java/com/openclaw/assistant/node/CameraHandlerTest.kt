@@ -32,15 +32,15 @@ class CameraHandlerTest {
   @Test
   fun testHandleListSuccess() = runBlocking {
     coEvery { camera.list() } returns listOf(
-      CameraCaptureManager.Device(id = "front", facing = "front"),
-      CameraCaptureManager.Device(id = "back", facing = "back")
+      CameraCaptureManager.Device(id = "0", facing = "front"),
+      CameraCaptureManager.Device(id = "1", facing = "back")
     )
 
     val result = handler.handleList()
 
     assertTrue(result.ok)
     assertEquals(
-      """{"devices":[{"id":"front","facing":"front"},{"id":"back","facing":"back"}]}""",
+      """{"devices":[{"id":"0","facing":"front"},{"id":"1","facing":"back"}]}""",
       result.payloadJson
     )
   }

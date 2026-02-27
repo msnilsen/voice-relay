@@ -80,14 +80,14 @@ class CameraCaptureManager(private val context: Context) {
   suspend fun list(): List<Device> =
     withContext(Dispatchers.Main) {
       val provider = context.cameraProvider()
-      provider.availableCameraInfos.mapNotNull { info ->
+      provider.availableCameraInfos.mapIndexedNotNull { index, info ->
         val facing = when (info.lensFacing) {
           CameraSelector.LENS_FACING_FRONT -> "front"
           CameraSelector.LENS_FACING_BACK -> "back"
           else -> null
         }
-        facing?.let { Device(id = it, facing = it) }
-      }.distinctBy { it.id }
+        facing?.let { Device(id = index.toString(), facing = it) }
+      }
     }
 
   suspend fun snap(paramsJson: String?): Payload =
