@@ -39,7 +39,7 @@ class InvokeDispatcherTest {
   @Test
   fun testCameraListDispatched() = runBlocking {
     val dispatcher = createDispatcher()
-    coEvery { cameraHandler.handleList() } returns GatewaySession.InvokeResult.ok("{}")
+    coEvery { cameraHandler.handleList(null) } returns GatewaySession.InvokeResult.ok("{}")
 
     val result = dispatcher.handleInvoke(OpenClawCameraCommand.List.rawValue, null)
 

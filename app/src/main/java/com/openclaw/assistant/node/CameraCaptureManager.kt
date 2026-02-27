@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.util.Base64
 import android.content.pm.PackageManager
+import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.exifinterface.media.ExifInterface
 import androidx.lifecycle.LifecycleOwner
 import androidx.camera.core.CameraSelector
@@ -77,16 +78,19 @@ class CameraCaptureManager(private val context: Context) {
     }
   }
 
+  @SuppressLint("UnsafeOptInUsageError")
   suspend fun list(): List<Device> =
     withContext(Dispatchers.Main) {
+      ensureCameraPermission()
       val provider = context.cameraProvider()
-      provider.availableCameraInfos.mapIndexedNotNull { index, info ->
+      provider.availableCameraInfos.map { info ->
         val facing = when (info.lensFacing) {
           CameraSelector.LENS_FACING_FRONT -> "front"
           CameraSelector.LENS_FACING_BACK -> "back"
-          else -> null
+          else -> "external"
         }
-        facing?.let { Device(id = index.toString(), facing = it) }
+        val id = Camera2CameraInfo.from(info).cameraId
+        Device(id = id, facing = facing)
       }
     }
 

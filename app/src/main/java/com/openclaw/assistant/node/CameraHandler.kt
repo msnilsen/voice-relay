@@ -28,11 +28,11 @@ class CameraHandler(
   private val invokeErrorFromThrowable: (err: Throwable) -> Pair<String, String>,
 ) {
 
-  suspend fun handleList(): GatewaySession.InvokeResult {
+  suspend fun handleList(paramsJson: String?): GatewaySession.InvokeResult {
     try {
       val devices = camera.list()
       val payload = buildJsonObject {
-        putJsonArray("devices") {
+        putJsonArray("cameras") {
           devices.forEach { device ->
             add(buildJsonObject {
               put("id", device.id)
