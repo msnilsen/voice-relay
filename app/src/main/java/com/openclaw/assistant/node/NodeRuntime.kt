@@ -58,6 +58,7 @@ class NodeRuntime(context: Context) {
   val location = LocationCaptureManager(appContext)
   val screenRecorder = ScreenRecordManager(appContext)
   val sms = SmsManager(appContext)
+  val notifications = NotificationManager(appContext)
   private val json = Json { ignoreUnknownKeys = true }
 
   private val externalAudioCaptureActive = MutableStateFlow(false)
@@ -116,6 +117,10 @@ class NodeRuntime(context: Context) {
     sms = sms,
   )
 
+  private val notificationHandler: NotificationHandler = NotificationHandler(
+    notificationManager = notifications,
+  )
+
   private val a2uiHandler: A2UIHandler = A2UIHandler(
     canvas = canvas,
     json = json,
@@ -129,6 +134,7 @@ class NodeRuntime(context: Context) {
     locationMode = { locationMode.value },
     voiceWakeMode = { voiceWakeMode.value },
     smsAvailable = { sms.canSendSms() },
+    notificationsAvailable = { notifications.isAccessGranted() },
     hasRecordAudioPermission = { hasRecordAudioPermission() },
     manualTls = { manualTls.value },
     deviceId = { deviceId },
@@ -140,6 +146,7 @@ class NodeRuntime(context: Context) {
     locationHandler = locationHandler,
     screenHandler = screenHandler,
     smsHandler = smsHandlerImpl,
+    notificationHandler = notificationHandler,
     a2uiHandler = a2uiHandler,
     debugHandler = debugHandler,
     appUpdateHandler = appUpdateHandler,
