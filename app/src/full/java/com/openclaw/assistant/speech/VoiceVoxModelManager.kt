@@ -24,15 +24,17 @@ class VoiceVoxModelManager(private val context: Context) {
         const val DICT_DIR = "open_jtalk_dic_utf_8-1.11"
         
         // VVM model download URLs (GitHub releases - official)
+        // Source: https://github.com/VOICEVOX/voicevox_vvm
         private const val BASE_URL = "https://github.com/VOICEVOX/voicevox_vvm/releases/download/0.16.3"
-        
+
         private val VVM_FILES = mapOf(
-            "0" to "$BASE_URL/0.vvm",
-            "1" to "$BASE_URL/1.vvm",
-            "2" to "$BASE_URL/2.vvm",
-            "3" to "$BASE_URL/3.vvm",
-            "4" to "$BASE_URL/4.vvm",
-            "5" to "$BASE_URL/5.vvm"
+            "0"  to "$BASE_URL/0.vvm",   // 四国めたん（ノーマル系）, ずんだもん（ノーマル系）, 春日部つむぎ, 雨晴はう
+            "3"  to "$BASE_URL/3.vvm",   // 波音リツ
+            "4"  to "$BASE_URL/4.vvm",   // 玄野武宏（ノーマル）
+            "5"  to "$BASE_URL/5.vvm",   // 四国めたん ささやき/ヒソヒソ, ずんだもん ささやき/ヒソヒソ
+            "9"  to "$BASE_URL/9.vvm",   // 白上虎太郎
+            "10" to "$BASE_URL/10.vvm",  // 玄野武宏 追加スタイル
+            "15" to "$BASE_URL/15.vvm"   // 青山龍星
         )
     }
     
@@ -152,12 +154,13 @@ class VoiceVoxModelManager(private val context: Context) {
      */
     fun getVvmFileSizeMB(vvmFileName: String): String {
         return when (vvmFileName) {
-            "0" -> context.getString(R.string.voicevox_size_approx_mb, 75)
-            "1" -> context.getString(R.string.voicevox_size_approx_mb, 50)
-            "2" -> context.getString(R.string.voicevox_size_approx_mb, 55)
-            "3" -> context.getString(R.string.voicevox_size_approx_mb, 60)
-            "4" -> context.getString(R.string.voicevox_size_approx_mb, 55)
-            "5" -> context.getString(R.string.voicevox_size_approx_mb, 50)
+            "0"  -> context.getString(R.string.voicevox_size_approx_mb, 75)
+            "3"  -> context.getString(R.string.voicevox_size_approx_mb, 60)
+            "4"  -> context.getString(R.string.voicevox_size_approx_mb, 55)
+            "5"  -> context.getString(R.string.voicevox_size_approx_mb, 50)
+            "9"  -> context.getString(R.string.voicevox_size_approx_mb, 70)
+            "10" -> context.getString(R.string.voicevox_size_approx_mb, 50)
+            "15" -> context.getString(R.string.voicevox_size_approx_mb, 100)
             else -> context.getString(R.string.voicevox_size_unknown)
         }
     }
