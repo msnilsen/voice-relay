@@ -10,7 +10,6 @@ import com.openclaw.assistant.gateway.GatewayTlsParams
 import com.openclaw.assistant.protocol.OpenClawCanvasA2UICommand
 import com.openclaw.assistant.protocol.OpenClawCanvasCommand
 import com.openclaw.assistant.protocol.OpenClawCameraCommand
-import com.openclaw.assistant.protocol.OpenClawDeviceCommand
 import com.openclaw.assistant.protocol.OpenClawLocationCommand
 import com.openclaw.assistant.protocol.OpenClawScreenCommand
 import com.openclaw.assistant.protocol.OpenClawSmsCommand
@@ -92,7 +91,6 @@ class ConnectionManager(
       add(OpenClawCanvasA2UICommand.PushJSONL.rawValue)
       add(OpenClawCanvasA2UICommand.Reset.rawValue)
       add(OpenClawScreenCommand.Record.rawValue)
-      OpenClawDeviceCommand.entries.forEach { add(it.rawValue) }
       if (cameraEnabled()) {
         add(OpenClawCameraCommand.Snap.rawValue)
         add(OpenClawCameraCommand.Clip.rawValue)
