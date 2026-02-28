@@ -49,7 +49,6 @@ import com.openclaw.assistant.speech.SpeechResult
 import com.openclaw.assistant.speech.TTSUtils
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
@@ -224,6 +223,17 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
             errorMessage.value = context.getString(R.string.error_config_required)
             displayText.value = context.getString(R.string.config_required)
             return
+        }
+
+        // For Gateway mode, fail fast if the gateway is not healthy
+        if (settings.connectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
+            val nodeRuntime = (context.applicationContext as OpenClawApplication).nodeRuntime
+            if (!nodeRuntime.chatHealthOk.value) {
+                currentState.value = AssistantState.ERROR
+                errorMessage.value = context.getString(R.string.error_gateway_not_connected)
+                displayText.value = context.getString(R.string.config_required)
+                return
+            }
         }
 
         // Start speech recognition
@@ -476,17 +486,13 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                 attachments = emptyList()
             )
 
-            // Wait for a new complete assistant response (timeout 60s)
+            // Wait for a new complete assistant response (timeout 60s).
+            // chatMessages only adds a message when the full response is committed,
+            // so watching it avoids both the pendingRunCount==0 early-fire issue
+            // and streaming partial-text races.
             val responseText = withTimeoutOrNull(60_000L) {
-                combine(
-                    nodeRuntime.pendingRunCount,
-                    nodeRuntime.chatMessages
-                ) { count, messages -> Pair(count, messages) }
-                    .first { (count, messages) ->
-                        val newAssistantCount = messages.count { it.role == "assistant" }
-                        count == 0 && newAssistantCount > assistantCountBefore
-                    }
-                    .second
+                nodeRuntime.chatMessages
+                    .first { messages -> messages.count { it.role == "assistant" } > assistantCountBefore }
                     .lastOrNull { it.role == "assistant" }
                     ?.content?.firstOrNull { it.type == "text" }?.text
             }
