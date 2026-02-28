@@ -214,6 +214,12 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_HTTP_IGNORE_SSL_ERRORS, false)
         set(value) = prefs.edit().putBoolean(KEY_HTTP_IGNORE_SSL_ERRORS, value).apply()
 
+    // Connection type used by the voice session (wakeword / long-press home)
+    // Defaults to the same as connectionType so existing setups behave identically
+    var wakewordConnectionType: String
+        get() = prefs.getString(KEY_WAKEWORD_CONNECTION_TYPE, connectionType) ?: connectionType
+        set(value) = prefs.edit().putString(KEY_WAKEWORD_CONNECTION_TYPE, value).apply()
+
     /**
      * Get the chat completions URL.
      * Supports both base URL (http://server) and full path (http://server/v1/chat/completions).
@@ -272,6 +278,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_USE_NODE_CHAT = "use_node_chat"
         private const val KEY_CONNECTION_TYPE = "connection_type"
         private const val KEY_HTTP_IGNORE_SSL_ERRORS = "http_ignore_ssl_errors"
+        private const val KEY_WAKEWORD_CONNECTION_TYPE = "wakeword_connection_type"
         private const val KEY_SPEECH_SILENCE_TIMEOUT = "speech_silence_timeout"
         private const val KEY_THINKING_SOUND_ENABLED = "thinking_sound_enabled"
         private const val KEY_SPEECH_LANGUAGE = "speech_language"

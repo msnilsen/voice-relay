@@ -226,7 +226,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         }
 
         // For Gateway mode, fail fast if the gateway is not healthy
-        if (settings.connectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
+        if (settings.wakewordConnectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
             val nodeRuntime = (context.applicationContext as OpenClawApplication).nodeRuntime
             if (!nodeRuntime.chatHealthOk.value) {
                 currentState.value = AssistantState.ERROR
@@ -460,7 +460,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                 chatRepository.addMessage(sessionId, message, isUser = true)
             }
 
-            if (settings.connectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
+            if (settings.wakewordConnectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
                 sendViaGateway(message)
             } else {
                 sendViaHttp(message)

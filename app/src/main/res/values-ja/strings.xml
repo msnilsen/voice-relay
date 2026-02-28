@@ -171,6 +171,11 @@
     <string name="http_api_configuration">HTTP API設定</string>
     <string name="http_ignore_ssl_errors">SSL証明書エラーを無視</string>
     <string name="http_ignore_ssl_errors_desc">自己署名証明書や無効なHTTPS証明書を許可します。信頼できるネットワークでのみ使用してください。</string>
+    <string name="http_ignore_ssl_errors_warning">⚠️ セキュリティリスク: SSL検証を無効にすると、中間者攻撃（MITM）に対して脆弱になります。同じネットワーク上の攻撃者がデータを傍受・改ざんできる可能性があります。ネットワークを完全に信頼できる場合、かつ適切な証明書をインストールできない場合のみ有効にしてください。</string>
+    <string name="wakeword_connection_type">音声セッション接続方式</string>
+    <string name="wakeword_connection_type_desc">ホームボタン長押しの音声セッションがアシスタントにメッセージを送る方法を選択します。</string>
+    <string name="wakeword_use_gateway">Gateway</string>
+    <string name="wakeword_use_http">HTTP</string>
     <string name="enter_session_name">セッション名を入力</string>
     <string name="session_name_optional">セッション名（任意）</string>
     <string name="running_tools">ツールを実行中</string>
