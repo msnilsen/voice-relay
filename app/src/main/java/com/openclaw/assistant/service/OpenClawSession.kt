@@ -198,22 +198,32 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         sendPauseBroadcast()
         
         // SESSION MANAGEMENT
-        scope.launch {
-            try {
-                val latestSession = if (settings.resumeLatestSession) chatRepository.getLatestSession() else null
-                if (latestSession != null) {
-                    currentSessionId = latestSession.id
-                    Log.d(TAG, "Resuming latest session: $currentSessionId")
-                } else {
-                    currentSessionId = chatRepository.createSession(title = String.format(context.getString(R.string.default_session_title_format), java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())))
-                    Log.d(TAG, "Created new session: $currentSessionId")
-                }
+        if (settings.wakewordConnectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
+            // Gateway mode: manage session on the gateway side, not in local DB
+            val nodeRuntime = (context.applicationContext as OpenClawApplication).nodeRuntime
+            if (!settings.resumeLatestSession) {
+                // Start a fresh gateway session
+                nodeRuntime.switchChatSession(java.util.UUID.randomUUID().toString())
+            }
+            // resumeLatestSession ON → keep the current active gateway session as-is
+        } else {
+            scope.launch {
+                try {
+                    val latestSession = if (settings.resumeLatestSession) chatRepository.getLatestSession() else null
+                    if (latestSession != null) {
+                        currentSessionId = latestSession.id
+                        Log.d(TAG, "Resuming latest session: $currentSessionId")
+                    } else {
+                        currentSessionId = chatRepository.createSession(title = String.format(context.getString(R.string.default_session_title_format), java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())))
+                        Log.d(TAG, "Created new session: $currentSessionId")
+                    }
 
-                // Store this ID in settings so ChatActivity and API calls use it
-                currentSessionId?.let { settings.sessionId = it }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to handle session", e)
-                FirebaseCrashlytics.getInstance().recordException(e)
+                    // Store this ID in settings so ChatActivity and API calls use it
+                    currentSessionId?.let { settings.sessionId = it }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to handle session", e)
+                    FirebaseCrashlytics.getInstance().recordException(e)
+                }
             }
         }
         
@@ -455,9 +465,11 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         displayText.value = ""
 
         scope.launch {
-            // Save User Message
-            currentSessionId?.let { sessionId ->
-                chatRepository.addMessage(sessionId, message, isUser = true)
+            // Save user message to local DB only for HTTP mode
+            if (settings.wakewordConnectionType != SettingsRepository.CONNECTION_TYPE_GATEWAY) {
+                currentSessionId?.let { sessionId ->
+                    chatRepository.addMessage(sessionId, message, isUser = true)
+                }
             }
 
             if (settings.wakewordConnectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
@@ -550,9 +562,11 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
 
     private suspend fun handleResponseReceived(responseText: String) {
 
-        // Save AI Message
-        currentSessionId?.let { sessionId ->
-            chatRepository.addMessage(sessionId, responseText, isUser = false)
+        // Save AI response to local DB only for HTTP mode
+        if (settings.wakewordConnectionType != SettingsRepository.CONNECTION_TYPE_GATEWAY) {
+            currentSessionId?.let { sessionId ->
+                chatRepository.addMessage(sessionId, responseText, isUser = false)
+            }
         }
 
         if (settings.ttsEnabled) {
