@@ -284,7 +284,8 @@
     <string name="state_error">エラー</string>
     <string name="action_try_again">再試行</string>
     <string name="config_required">設定が必要です</string>
-    <string name="error_config_required">HTTP接続を設定してください</string>
+    <string name="error_config_required">設定から接続を設定してください</string>
+    <string name="error_gateway_not_connected">ゲートウェイに接続されていません。接続設定を確認してください。</string>
     <string name="error_speech_general">音声エラー</string>
     <string name="error_speech_audio">音声入力エラー</string>
     <string name="error_speech_client">クライアントエラー</string>
