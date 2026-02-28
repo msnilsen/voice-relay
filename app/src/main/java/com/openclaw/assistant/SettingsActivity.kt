@@ -240,13 +240,14 @@ fun SettingsScreen(
     var showAuthToken by rememberSaveable { mutableStateOf(false) }
     var showWakeWordMenu by rememberSaveable { mutableStateOf(false) }
     var showLanguageMenu by rememberSaveable { mutableStateOf(false) }
-    
+    var httpIgnoreSslErrors by rememberSaveable { mutableStateOf(settings.httpIgnoreSslErrors) }
+
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val runtime = remember(context.applicationContext) {
         (context.applicationContext as OpenClawApplication).nodeRuntime
     }
-    val apiClient = remember { OpenClawClient() }
+    val apiClient = remember(httpIgnoreSslErrors) { OpenClawClient(ignoreSslErrors = httpIgnoreSslErrors) }
     
     var isTesting by rememberSaveable { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<TestResult?>(null) }
@@ -412,6 +413,7 @@ fun SettingsScreen(
                             // Save HTTP Settings
                             settings.httpUrl = httpInputUrl.trim()
                             settings.authToken = httpToken.trim()
+                            settings.httpIgnoreSslErrors = httpIgnoreSslErrors
 
                             settings.defaultAgentId = defaultAgentId
                             settings.ttsEnabled = ttsEnabled
@@ -829,6 +831,24 @@ fun SettingsScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
+                            // Ignore SSL Errors Toggle
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(stringResource(R.string.http_ignore_ssl_errors), style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(R.string.http_ignore_ssl_errors_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                }
+                                Switch(
+                                    checked = httpIgnoreSslErrors,
+                                    onCheckedChange = { httpIgnoreSslErrors = it; testResult = null }
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
                             // Test Connection Button
                             Button(
                                 onClick = {
@@ -846,6 +866,7 @@ fun SettingsScreen(
                                                     testResult = TestResult(success = true, message = context.getString(R.string.connected))
                                                     settings.httpUrl = httpInputUrl.trim()
                                                     settings.authToken = httpToken.trim()
+                                                    settings.httpIgnoreSslErrors = httpIgnoreSslErrors
                                                     settings.isVerified = true
                                                 },
                                                 onFailure = {
