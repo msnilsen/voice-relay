@@ -232,7 +232,10 @@ class SettingsRepository(context: Context) {
 
     // Check if configured
     fun isConfigured(): Boolean {
-        return httpUrl.isNotBlank() && isVerified
+        return when (connectionType) {
+            CONNECTION_TYPE_GATEWAY -> true
+            else -> httpUrl.isNotBlank() && isVerified
+        }
     }
 
     // Generate new session ID

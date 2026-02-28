@@ -7,8 +7,9 @@
     <string name="notification_content">Say \"%s\" to activate</string>
     <string name="default_session_title_format">Voice Session %s</string>
     <string name="chat_session_title_format">Chat %s</string>
-    <string name="error_config_required">Please configure HTTP connection</string>
+    <string name="error_config_required">Please configure connection in Settings</string>
     <string name="config_required">Configuration required</string>
+    <string name="error_gateway_not_connected">Gateway is not connected. Please check your connection settings.</string>
     <string name="state_listening">Listening...</string>
     <string name="state_processing">Processing...</string>
     <string name="state_thinking">Thinking...</string>

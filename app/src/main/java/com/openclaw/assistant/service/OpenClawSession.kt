@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.openclaw.assistant.R
+import com.openclaw.assistant.OpenClawApplication
 import com.openclaw.assistant.data.SettingsRepository
 import com.openclaw.assistant.api.OpenClawClient
 import com.openclaw.assistant.speech.SpeechRecognizerManager
@@ -48,6 +49,8 @@ import com.openclaw.assistant.speech.SpeechResult
 import com.openclaw.assistant.speech.TTSUtils
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -447,7 +450,60 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                 chatRepository.addMessage(sessionId, message, isUser = true)
             }
 
-            sendViaHttp(message)
+            if (settings.connectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
+                sendViaGateway(message)
+            } else {
+                sendViaHttp(message)
+            }
+        }
+    }
+
+    private suspend fun sendViaGateway(message: String) {
+        val nodeRuntime = (context.applicationContext as OpenClawApplication).nodeRuntime
+        if (!nodeRuntime.chatHealthOk.value) {
+            stopThinkingSound()
+            currentState.value = AssistantState.ERROR
+            errorMessage.value = context.getString(R.string.error_gateway_not_connected)
+            return
+        }
+
+        try {
+            val assistantCountBefore = nodeRuntime.chatMessages.value.count { it.role == "assistant" }
+
+            nodeRuntime.sendChat(
+                message = message,
+                thinking = "low",
+                attachments = emptyList()
+            )
+
+            // Wait for a new complete assistant response (timeout 60s)
+            val responseText = withTimeoutOrNull(60_000L) {
+                combine(
+                    nodeRuntime.pendingRunCount,
+                    nodeRuntime.chatMessages
+                ) { count, messages -> Pair(count, messages) }
+                    .first { (count, messages) ->
+                        val newAssistantCount = messages.count { it.role == "assistant" }
+                        count == 0 && newAssistantCount > assistantCountBefore
+                    }
+                    .second
+                    .lastOrNull { it.role == "assistant" }
+                    ?.content?.firstOrNull { it.type == "text" }?.text
+            }
+
+            if (responseText != null) {
+                displayText.value = responseText
+                handleResponseReceived(responseText)
+            } else {
+                stopThinkingSound()
+                currentState.value = AssistantState.ERROR
+                errorMessage.value = context.getString(R.string.error_no_response)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Gateway error", e)
+            stopThinkingSound()
+            currentState.value = AssistantState.ERROR
+            errorMessage.value = e.message ?: context.getString(R.string.error_network)
         }
     }
 
