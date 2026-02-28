@@ -1488,6 +1488,24 @@ fun SettingsScreen(
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/R5R51S97C4"))
+                                context.startActivity(intent)
+                            } catch (e: ActivityNotFoundException) {
+                                // No browser available; ignore
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.OpenInBrowser, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.credits_support_kofi_button))
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
                     val versionName = remember {
                         runCatching {
                             context.packageManager.getPackageInfo(context.packageName, 0).versionName
