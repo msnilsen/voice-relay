@@ -23,6 +23,26 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Setup debug keystore
+        env:
+          DEBUG_KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          mkdir -p ~/.android
+          if [ -n "$DEBUG_KEYSTORE_B64" ]; then
+            # Own-repo PR: use shared keystore so APKs from different PRs share the same signature
+            echo "$DEBUG_KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+          else
+            # Fork PR: generate a temporary keystore (expected – forks can't share secrets)
+            keytool -genkey -v \
+              -keystore ~/.android/debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US" \
+              -noprompt
+          fi
+
       - name: Setup google-services.json
         env:
           DEBUG_GOOGLE_SERVICES_JSON: ${{ secrets.DEBUG_GOOGLE_SERVICES_JSON }}
