@@ -1,6 +1,7 @@
 package com.openclaw.assistant
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -446,6 +447,17 @@ fun MainScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
+                    val context = LocalContext.current
+                    IconButton(onClick = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/R5R51S97C4"))
+                            context.startActivity(intent)
+                        } catch (e: ActivityNotFoundException) {
+                            // No browser available; ignore
+                        }
+                    }) {
+                        Icon(Icons.Default.VolunteerActivism, contentDescription = stringResource(R.string.credits_support_kofi_button))
+                    }
                     IconButton(onClick = { showHowToUse = true }) {
                         Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = stringResource(R.string.how_to_use))
                     }
