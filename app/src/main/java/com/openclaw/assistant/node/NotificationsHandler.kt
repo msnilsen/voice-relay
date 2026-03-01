@@ -2,6 +2,7 @@ package com.openclaw.assistant.node
 
 import android.content.Context
 import android.provider.Settings
+import com.openclaw.assistant.PermissionRequester
 import com.openclaw.assistant.gateway.GatewaySession
 import com.openclaw.assistant.service.OpenClawNotificationListenerService
 import kotlinx.serialization.json.Json
@@ -15,17 +16,23 @@ class NotificationsHandler(
     private val notificationManager: NotificationManager
 ) {
     private val json = Json { ignoreUnknownKeys = true }
+    @Volatile private var permissionRequester: PermissionRequester? = null
+
+    fun attachPermissionRequester(requester: PermissionRequester) {
+        permissionRequester = requester
+    }
 
     fun isServiceEnabled(): Boolean {
         val enabledPackages = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
         return enabledPackages?.contains(context.packageName) == true
     }
 
-    fun handleList(): GatewaySession.InvokeResult {
+    suspend fun handleList(): GatewaySession.InvokeResult {
         if (!isServiceEnabled()) {
+            permissionRequester?.requestNotificationAccess()
             return GatewaySession.InvokeResult.error(
                 code = "NOTIFICATIONS_PERMISSION_REQUIRED",
-                message = "NOTIFICATIONS_PERMISSION_REQUIRED: grant Notification Listener access in Settings"
+                message = "NOTIFICATIONS_PERMISSION_REQUIRED: enable notification access in Settings > Notification Access, then try again"
             )
         }
 
@@ -46,11 +53,12 @@ class NotificationsHandler(
         return GatewaySession.InvokeResult.ok(payload.toString())
     }
 
-    fun handleActions(paramsJson: String?): GatewaySession.InvokeResult {
+    suspend fun handleActions(paramsJson: String?): GatewaySession.InvokeResult {
         if (!isServiceEnabled()) {
+            permissionRequester?.requestNotificationAccess()
             return GatewaySession.InvokeResult.error(
                 code = "NOTIFICATIONS_PERMISSION_REQUIRED",
-                message = "NOTIFICATIONS_PERMISSION_REQUIRED: grant Notification Listener access in Settings"
+                message = "NOTIFICATIONS_PERMISSION_REQUIRED: enable notification access in Settings > Notification Access, then try again"
             )
         }
 
