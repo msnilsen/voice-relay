@@ -263,6 +263,7 @@
     <string name="pairing_guide_step_3">3. एक बार जब सर्वर कहता है "डिवाइस स्वीकृत है", तो नीचे ताज़ा स्थिति पर टैप करें।</string>
     <string name="pairing_troubleshooting_title">समस्या निवारण</string>
     <string name="pairing_troubleshooting_desc">• सुनिश्चित करें कि सेटिंग्स में सर्वर यूआरएल सही है।\n• यदि कमांड विफल हो जाता है, तो जांचें कि क्या ओपनक्लाव सीएलआई स्थापित है।\n• आप इसका उपयोग करके मैन्युअल रूप से भी अनुमोदन कर सकते हैं: openclaw devices approve &lt;REQUEST_ID&gt;</string>
+    <string name="language_section">भाषा</string>
     <string name="support_section">सहायता</string>
     <string name="report_issue">रिपोर्ट मुद्दा</string>
     <string name="report_issue_desc">कोई बग मिला या कोई सुविधा अनुरोध है? हमें GitHub पर बताएं।</string>

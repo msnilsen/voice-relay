@@ -262,6 +262,7 @@ Weitere Informationen finden Sie auf der offiziellen Website von VOICEVOX.</stri
     <string name="pairing_guide_step_3">3. Sobald der Server „Gerät genehmigt“ anzeigt, tippen Sie unten auf „Status aktualisieren“.</string>
     <string name="pairing_troubleshooting_title">Fehlerbehebung</string>
     <string name="pairing_troubleshooting_desc">• Stellen Sie sicher, dass die Server-URL in den Einstellungen korrekt ist.\n• Wenn der Befehl fehlschlägt, überprüfen Sie, ob die Openclaw-CLI installiert ist.\n• Sie können auch manuell genehmigen mit: openclaw devices approve &lt;REQUEST_ID&gt;</string>
+    <string name="language_section">Sprache</string>
     <string name="support_section">Unterstützung</string>
     <string name="report_issue">Problem melden</string>
     <string name="report_issue_desc">Haben Sie einen Fehler gefunden oder haben Sie eine Funktionsanfrage? Lassen Sie es uns auf GitHub wissen.</string>

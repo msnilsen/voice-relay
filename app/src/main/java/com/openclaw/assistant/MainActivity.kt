@@ -351,6 +351,20 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         super.onResume()
         refreshMissingPermissions()
         refreshAllPermissionsStatus()
+
+        // Detect app language change made in SettingsActivity and recreate to apply it.
+        // AppCompatDelegate.setApplicationLocales() auto-recreates on API 33+, but on
+        // API 31-32 with ComponentActivity, explicit recreate is needed.
+        val savedTag = SettingsRepository.getInstance(this).appLanguage.trim()
+        val displayedLanguage = resources.configuration.locales[0].language
+        val expectedLanguage = if (savedTag.isBlank()) {
+            java.util.Locale.getDefault().language
+        } else {
+            java.util.Locale.forLanguageTag(savedTag).language
+        }
+        if (savedTag.isNotBlank() && displayedLanguage != expectedLanguage) {
+            recreate()
+        }
     }
 
     override fun onDestroy() {

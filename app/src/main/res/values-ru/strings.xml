@@ -263,6 +263,7 @@
     <string name="pairing_guide_step_3">3. Как только сервер сообщит: «Устройство одобрено», нажмите «Обновить статус» ниже.</string>
     <string name="pairing_troubleshooting_title">Устранение неполадок</string>
     <string name="pairing_troubleshooting_desc">• Убедитесь, что URL-адрес сервера в настройках указан правильно.\n• Если команда не выполнена, проверьте, установлен ли интерфейс командной строки openclaw.\n• Вы также можете подтвердить это вручную, используя: openclaw devices approve &lt;REQUEST_ID&gt;</string>
+    <string name="language_section">Язык</string>
     <string name="support_section">Поддержка</string>
     <string name="report_issue">Сообщить о проблеме</string>
     <string name="report_issue_desc">Нашли ошибку или у вас есть пожелания по добавлению функции? Дайте нам знать на GitHub.</string>

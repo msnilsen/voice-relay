@@ -262,6 +262,7 @@
     <string name="pairing_guide_step_3">3. 一旦伺服器顯示“設備已批准”，請點擊下面的刷新狀態。</string>
     <string name="pairing_troubleshooting_title">故障排除</string>
     <string name="pairing_troubleshooting_desc">• 確保「設定」中的伺服器 URL 正確。 \n• 如果指令失敗，請檢查是否安裝了 openclaw CLI。 \n• 您也可以使用以下指令手動核准：openclaw devices approve &lt;REQUEST_ID&gt;</string>
+    <string name="language_section">語言</string>
     <string name="support_section">支援</string>
     <string name="report_issue">報告問題</string>
     <string name="report_issue_desc">發現錯誤或有功能請求？請在 GitHub 上告訴我們。</string>

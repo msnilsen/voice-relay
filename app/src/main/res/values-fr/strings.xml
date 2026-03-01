@@ -263,6 +263,7 @@ Pour plus de détails, consultez le site officiel de VOICEVOX.</string>
     <string name="pairing_guide_step_3">3. Une fois que le serveur indique \"Appareil approuvé\", appuyez sur Actualiser l\'état ci-dessous.</string>
     <string name="pairing_troubleshooting_title">Dépannage</string>
     <string name="pairing_troubleshooting_desc">• Assurez-vous que l\'URL du serveur dans Paramètres est correcte.\n• Si la commande échoue, vérifiez si la CLI openclaw est installée.\n• Vous pouvez également approuver manuellement en utilisant : openclaw devices approve &lt;REQUEST_ID&gt;</string>
+    <string name="language_section">Langue</string>
     <string name="support_section">Support</string>
     <string name="report_issue">Signaler un problème</string>
     <string name="report_issue_desc">Vous avez trouvé un bug ou avez une demande de fonctionnalité ? Faites-le-nous savoir sur GitHub.</string>
