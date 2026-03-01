@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -29,9 +29,29 @@ jobs:
       - name: Build Standard Debug APK
         run: ./gradlew assembleStandardDebug
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: voice-relay-debug
-          path: app/build/outputs/apk/standard/debug/*.apk
-          retention-days: 30
+      - name: Get version info
+        id: version
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y%m%d-%H%M)
+          echo "tag=dev-${DATE}-${SHA}" >> $GITHUB_OUTPUT
+          echo "name=Dev Build ${DATE} (${SHA})" >> $GITHUB_OUTPUT
+
+      - name: Rename APK
+        run: |
+          APK=$(find app/build/outputs/apk/standard/debug -name "*.apk" | head -1)
+          cp "$APK" voice-relay-debug.apk
+
+      - name: Create or update dev release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete dev --yes 2>/dev/null || true
+          git tag -f dev
+          git push -f origin dev
+          gh release create dev voice-relay-debug.apk \
+            --title "${{ steps.version.outputs.name }}" \
+            --notes "Automated debug build from \`main\` branch at commit ${{ github.sha }}.
+
+          Install: download \`voice-relay-debug.apk\` below and sideload on Android." \
+            --prerelease
