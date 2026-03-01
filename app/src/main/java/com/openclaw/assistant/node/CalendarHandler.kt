@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.CalendarContract
 import androidx.core.content.ContextCompat
+import com.openclaw.assistant.PermissionRequester
 import com.openclaw.assistant.gateway.GatewaySession
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -18,6 +19,11 @@ import java.util.TimeZone
 class CalendarHandler(private val appContext: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
+    @Volatile private var permissionRequester: PermissionRequester? = null
+
+    fun attachPermissionRequester(requester: PermissionRequester) {
+        permissionRequester = requester
+    }
 
     private fun hasReadPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -49,8 +55,22 @@ class CalendarHandler(private val appContext: Context) {
         }
     }
 
-    fun handleEvents(paramsJson: String?): GatewaySession.InvokeResult {
-        if (!hasReadPermission()) {
+    private suspend fun ensureReadPermission(): Boolean {
+        if (hasReadPermission()) return true
+        val requester = permissionRequester ?: return false
+        val results = requester.requestIfMissing(listOf(Manifest.permission.READ_CALENDAR))
+        return results[Manifest.permission.READ_CALENDAR] == true
+    }
+
+    private suspend fun ensureWritePermission(): Boolean {
+        if (hasWritePermission()) return true
+        val requester = permissionRequester ?: return false
+        val results = requester.requestIfMissing(listOf(Manifest.permission.WRITE_CALENDAR))
+        return results[Manifest.permission.WRITE_CALENDAR] == true
+    }
+
+    suspend fun handleEvents(paramsJson: String?): GatewaySession.InvokeResult {
+        if (!ensureReadPermission()) {
             return GatewaySession.InvokeResult.error(
                 code = "CALENDAR_READ_PERMISSION_REQUIRED",
                 message = "CALENDAR_READ_PERMISSION_REQUIRED: grant Calendar read permission"
@@ -121,8 +141,8 @@ class CalendarHandler(private val appContext: Context) {
         return GatewaySession.InvokeResult.ok(payload.toString())
     }
 
-    fun handleAdd(paramsJson: String?): GatewaySession.InvokeResult {
-        if (!hasWritePermission()) {
+    suspend fun handleAdd(paramsJson: String?): GatewaySession.InvokeResult {
+        if (!ensureWritePermission()) {
             return GatewaySession.InvokeResult.error(
                 code = "CALENDAR_WRITE_PERMISSION_REQUIRED",
                 message = "CALENDAR_WRITE_PERMISSION_REQUIRED: grant Calendar write permission"

@@ -8,6 +8,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.core.content.ContextCompat
+import com.openclaw.assistant.PermissionRequester
 import com.openclaw.assistant.gateway.GatewaySession
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -24,6 +25,12 @@ class MotionHandler(private val appContext: Context) : SensorEventListener {
         }
     }
 
+    @Volatile private var permissionRequester: PermissionRequester? = null
+
+    fun attachPermissionRequester(requester: PermissionRequester) {
+        permissionRequester = requester
+    }
+
     private fun hasPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             appContext,
@@ -31,8 +38,15 @@ class MotionHandler(private val appContext: Context) : SensorEventListener {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    fun handleActivity(): GatewaySession.InvokeResult {
-        if (!hasPermission()) {
+    private suspend fun ensurePermission(): Boolean {
+        if (hasPermission()) return true
+        val requester = permissionRequester ?: return false
+        val results = requester.requestIfMissing(listOf(Manifest.permission.ACTIVITY_RECOGNITION))
+        return results[Manifest.permission.ACTIVITY_RECOGNITION] == true
+    }
+
+    suspend fun handleActivity(): GatewaySession.InvokeResult {
+        if (!ensurePermission()) {
             return GatewaySession.InvokeResult.error(
                 code = "MOTION_PERMISSION_REQUIRED",
                 message = "MOTION_PERMISSION_REQUIRED: grant Activity Recognition permission"
@@ -44,8 +58,8 @@ class MotionHandler(private val appContext: Context) : SensorEventListener {
         return GatewaySession.InvokeResult.ok(payload.toString())
     }
 
-    fun handlePedometer(): GatewaySession.InvokeResult {
-        if (!hasPermission()) {
+    suspend fun handlePedometer(): GatewaySession.InvokeResult {
+        if (!ensurePermission()) {
             return GatewaySession.InvokeResult.error(
                 code = "MOTION_PERMISSION_REQUIRED",
                 message = "MOTION_PERMISSION_REQUIRED: grant Activity Recognition permission"

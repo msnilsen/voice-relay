@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import com.openclaw.assistant.CameraHudKind
 import com.openclaw.assistant.CameraHudState
 import com.openclaw.assistant.LocationMode
+import com.openclaw.assistant.PermissionRequester
 import com.openclaw.assistant.SecurePrefs
 import com.openclaw.assistant.VoiceWakeMode
 import com.openclaw.assistant.chat.ChatController
@@ -692,6 +693,13 @@ class NodeRuntime(context: Context) {
       return
     }
     connect(GatewayEndpoint.manual(host = host, port = port))
+  }
+
+  fun attachPermissionRequester(requester: PermissionRequester) {
+    contactsHandler.attachPermissionRequester(requester)
+    calendarHandler.attachPermissionRequester(requester)
+    photosHandler.attachPermissionRequester(requester)
+    motionHandler.attachPermissionRequester(requester)
   }
 
   fun disconnect() {

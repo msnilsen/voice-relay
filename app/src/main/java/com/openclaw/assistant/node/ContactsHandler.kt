@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
+import com.openclaw.assistant.PermissionRequester
 import com.openclaw.assistant.gateway.GatewaySession
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -17,6 +18,11 @@ import kotlinx.serialization.json.jsonObject
 class ContactsHandler(private val appContext: Context) {
 
     private val json = Json { ignoreUnknownKeys = true }
+    @Volatile private var permissionRequester: PermissionRequester? = null
+
+    fun attachPermissionRequester(requester: PermissionRequester) {
+        permissionRequester = requester
+    }
 
     private fun hasReadPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -32,8 +38,22 @@ class ContactsHandler(private val appContext: Context) {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    fun handleSearch(paramsJson: String?): GatewaySession.InvokeResult {
-        if (!hasReadPermission()) {
+    private suspend fun ensureReadPermission(): Boolean {
+        if (hasReadPermission()) return true
+        val requester = permissionRequester ?: return false
+        val results = requester.requestIfMissing(listOf(Manifest.permission.READ_CONTACTS))
+        return results[Manifest.permission.READ_CONTACTS] == true
+    }
+
+    private suspend fun ensureWritePermission(): Boolean {
+        if (hasWritePermission()) return true
+        val requester = permissionRequester ?: return false
+        val results = requester.requestIfMissing(listOf(Manifest.permission.WRITE_CONTACTS))
+        return results[Manifest.permission.WRITE_CONTACTS] == true
+    }
+
+    suspend fun handleSearch(paramsJson: String?): GatewaySession.InvokeResult {
+        if (!ensureReadPermission()) {
             return GatewaySession.InvokeResult.error(
                 code = "CONTACTS_READ_PERMISSION_REQUIRED",
                 message = "CONTACTS_READ_PERMISSION_REQUIRED: grant Contacts read permission"
@@ -103,8 +123,8 @@ class ContactsHandler(private val appContext: Context) {
         return GatewaySession.InvokeResult.ok(payload.toString())
     }
 
-    fun handleAdd(paramsJson: String?): GatewaySession.InvokeResult {
-        if (!hasWritePermission()) {
+    suspend fun handleAdd(paramsJson: String?): GatewaySession.InvokeResult {
+        if (!ensureWritePermission()) {
             return GatewaySession.InvokeResult.error(
                 code = "CONTACTS_WRITE_PERMISSION_REQUIRED",
                 message = "CONTACTS_WRITE_PERMISSION_REQUIRED: grant Contacts write permission"

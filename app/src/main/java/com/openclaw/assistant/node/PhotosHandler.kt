@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.MediaStore
 import androidx.core.content.ContextCompat
+import com.openclaw.assistant.PermissionRequester
 import com.openclaw.assistant.gateway.GatewaySession
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -13,6 +14,12 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonObject
 
 class PhotosHandler(private val appContext: Context) {
+
+    @Volatile private var permissionRequester: PermissionRequester? = null
+
+    fun attachPermissionRequester(requester: PermissionRequester) {
+        permissionRequester = requester
+    }
 
     private fun hasPermission(): Boolean {
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -23,8 +30,20 @@ class PhotosHandler(private val appContext: Context) {
         return ContextCompat.checkSelfPermission(appContext, permission) == PackageManager.PERMISSION_GRANTED
     }
 
-    fun handleLatest(): GatewaySession.InvokeResult {
-        if (!hasPermission()) {
+    private suspend fun ensurePermission(): Boolean {
+        if (hasPermission()) return true
+        val requester = permissionRequester ?: return false
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        val results = requester.requestIfMissing(listOf(permission))
+        return results[permission] == true
+    }
+
+    suspend fun handleLatest(): GatewaySession.InvokeResult {
+        if (!ensurePermission()) {
             return GatewaySession.InvokeResult.error(
                 code = "PHOTOS_PERMISSION_REQUIRED",
                 message = "PHOTOS_PERMISSION_REQUIRED: grant Photos/Storage permission"

@@ -128,6 +128,13 @@ class PermissionRequester(private val activity: ComponentActivity) {
       Manifest.permission.CAMERA -> "Camera"
       Manifest.permission.RECORD_AUDIO -> "Microphone"
       Manifest.permission.SEND_SMS -> "SMS"
+      Manifest.permission.READ_CONTACTS -> "Contacts (read)"
+      Manifest.permission.WRITE_CONTACTS -> "Contacts (write)"
+      Manifest.permission.READ_CALENDAR -> "Calendar (read)"
+      Manifest.permission.WRITE_CALENDAR -> "Calendar (write)"
+      Manifest.permission.READ_MEDIA_IMAGES -> "Photos"
+      Manifest.permission.READ_EXTERNAL_STORAGE -> "Storage"
+      Manifest.permission.ACTIVITY_RECOGNITION -> "Activity Recognition"
       else -> permission
     }
 }

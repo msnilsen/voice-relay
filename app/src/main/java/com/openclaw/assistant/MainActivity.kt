@@ -151,6 +151,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         val runtime = (applicationContext as OpenClawApplication).nodeRuntime
         runtime.screenRecorder.attachScreenCaptureRequester(screenCaptureRequester)
         runtime.screenRecorder.attachPermissionRequester(permissionRequester)
+        runtime.attachPermissionRequester(permissionRequester)
         
         initializeTTS()
         // Removed checkPermissions() from onCreate to allow SetupGuideScreen to handle it

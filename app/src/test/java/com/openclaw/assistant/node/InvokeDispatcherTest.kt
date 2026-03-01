@@ -91,7 +91,7 @@ class InvokeDispatcherTest {
   @Test
   fun `notifications list is dispatched to handler`() = runTest {
     val dispatcher = createDispatcher()
-    every { notificationsHandler.handleList() } returns GatewaySession.InvokeResult.ok("""{"notifications":[]}""")
+    coEvery { notificationsHandler.handleList() } returns GatewaySession.InvokeResult.ok("""{"notifications":[]}""")
 
     val result = dispatcher.handleInvoke(OpenClawNotificationsCommand.List.rawValue, null)
 
@@ -103,7 +103,7 @@ class InvokeDispatcherTest {
   fun `system notify is dispatched to handler`() = runTest {
     val dispatcher = createDispatcher()
     val params = """{"message":"test"}"""
-    every { systemHandler.handleNotify(params) } returns GatewaySession.InvokeResult.ok("""{"ok":true}""")
+    coEvery { systemHandler.handleNotify(params) } returns GatewaySession.InvokeResult.ok("""{"ok":true}""")
 
     val result = dispatcher.handleInvoke(OpenClawSystemCommand.Notify.rawValue, params)
 
@@ -114,7 +114,7 @@ class InvokeDispatcherTest {
   @Test
   fun `photos latest is dispatched to handler`() = runTest {
     val dispatcher = createDispatcher()
-    every { photosHandler.handleLatest() } returns GatewaySession.InvokeResult.ok("""{"photos":[]}""")
+    coEvery { photosHandler.handleLatest() } returns GatewaySession.InvokeResult.ok("""{"photos":[]}""")
 
     val result = dispatcher.handleInvoke(OpenClawPhotosCommand.Latest.rawValue, null)
 
@@ -126,7 +126,7 @@ class InvokeDispatcherTest {
   fun `contacts search is dispatched to handler`() = runTest {
     val dispatcher = createDispatcher()
     val params = """{"query":"test"}"""
-    every { contactsHandler.handleSearch(params) } returns GatewaySession.InvokeResult.ok("""{"contacts":[]}""")
+    coEvery { contactsHandler.handleSearch(params) } returns GatewaySession.InvokeResult.ok("""{"contacts":[]}""")
 
     val result = dispatcher.handleInvoke(OpenClawContactsCommand.Search.rawValue, params)
 
@@ -138,7 +138,7 @@ class InvokeDispatcherTest {
   fun `calendar events is dispatched to handler`() = runTest {
     val dispatcher = createDispatcher()
     val params = """{"startTime":"123"}"""
-    every { calendarHandler.handleEvents(params) } returns GatewaySession.InvokeResult.ok("""{"events":[]}""")
+    coEvery { calendarHandler.handleEvents(params) } returns GatewaySession.InvokeResult.ok("""{"events":[]}""")
 
     val result = dispatcher.handleInvoke(OpenClawCalendarCommand.Events.rawValue, params)
 
@@ -149,7 +149,7 @@ class InvokeDispatcherTest {
   @Test
   fun `motion activity is dispatched to handler`() = runTest {
     val dispatcher = createDispatcher()
-    every { motionHandler.handleActivity() } returns GatewaySession.InvokeResult.ok("""{"activity":"still"}""")
+    coEvery { motionHandler.handleActivity() } returns GatewaySession.InvokeResult.ok("""{"activity":"still"}""")
 
     val result = dispatcher.handleInvoke(OpenClawMotionCommand.Activity.rawValue, null)
 
