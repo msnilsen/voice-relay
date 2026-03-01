@@ -1,0 +1,44 @@
+package com.openclaw.assistant.wear.service
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
+import android.content.Intent
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+import com.openclaw.assistant.wear.R
+
+/**
+ * Foreground service that keeps the process alive and holds a partial wake lock
+ * during a voice session. Prevents the OS from freezing the process mid-conversation.
+ */
+class WearSessionForegroundService : Service() {
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        createNotificationChannel()
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(R.string.notification_session_title))
+            .setContentText(getString(R.string.notification_session_content))
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+        startForeground(NOTIFICATION_ID, notification)
+        return START_NOT_STICKY
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun createNotificationChannel() {
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(R.string.notification_session_channel_name),
+            NotificationManager.IMPORTANCE_LOW
+        )
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+    }
+
+    companion object {
+        private const val CHANNEL_ID = "wear_session"
+        private const val NOTIFICATION_ID = 1001
+    }
+}
