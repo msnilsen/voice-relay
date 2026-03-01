@@ -2,8 +2,11 @@ package com.openclaw.assistant
 
 import android.app.Application
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.openclaw.assistant.data.SettingsRepository
 import java.security.Security
 
 class OpenClawApplication : Application() {
@@ -14,6 +17,7 @@ class OpenClawApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        applySavedAppLocale()
         // In debug builds, FirebaseInitProvider is removed from the manifest so that fork PRs
         // (which lack a real API key) do not crash on launch. Initialize Firebase manually here
         // when the build flag indicates a real key is present.
@@ -32,5 +36,15 @@ class OpenClawApplication : Application() {
                 FirebaseCrashlytics.getInstance().recordException(e)
             }
         }
+    }
+
+    private fun applySavedAppLocale() {
+        val tag = SettingsRepository.getInstance(this).appLanguage.trim()
+        val locales = if (tag.isBlank()) {
+            LocaleListCompat.getEmptyLocaleList()
+        } else {
+            LocaleListCompat.forLanguageTags(tag)
+        }
+        AppCompatDelegate.setApplicationLocales(locales)
     }
 }

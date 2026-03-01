@@ -171,6 +171,9 @@
     <string name="speech_silence_timeout_desc">Wait time after speech pause</string>
     <string name="speech_language_label">Speech Language</string>
     <string name="speech_language_desc">Language for voice recognition and responses</string>
+    <string name="display_language_label">Display Language</string>
+    <string name="display_language_desc">Language used for app screens</string>
+    <string name="display_language_system_default">System Default</string>
     <string name="conversation_section">Conversation</string>
     <string name="speech_language_system_default">System Default</string>
     <string name="speech_language_loading">Loading languages…</string>

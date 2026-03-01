@@ -179,6 +179,11 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_SPEECH_LANGUAGE, "") ?: ""
         set(value) = prefs.edit().putString(KEY_SPEECH_LANGUAGE, value).apply()
 
+    // App UI language (BCP-47 tag, empty = system default)
+    var appLanguage: String
+        get() = prefs.getString(KEY_APP_LANGUAGE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_APP_LANGUAGE, value).apply()
+
     // Thinking sound enabled
     var thinkingSoundEnabled: Boolean
         get() = prefs.getBoolean(KEY_THINKING_SOUND_ENABLED, true)
@@ -282,6 +287,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_SPEECH_SILENCE_TIMEOUT = "speech_silence_timeout"
         private const val KEY_THINKING_SOUND_ENABLED = "thinking_sound_enabled"
         private const val KEY_SPEECH_LANGUAGE = "speech_language"
+        private const val KEY_APP_LANGUAGE = "app_language"
         private const val KEY_HAS_COMPLETED_SETUP = "has_completed_setup"
         
         // TTS settings keys
