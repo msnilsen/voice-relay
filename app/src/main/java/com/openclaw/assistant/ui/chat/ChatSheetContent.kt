@@ -48,7 +48,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   val resolver = context.contentResolver
   val scope = rememberCoroutineScope()
 
-  val attachments = remember { mutableStateListOf<PendingImageAttachment>() }
+  val attachments = remember { mutableStateListOf<PendingFileAttachment>() }
 
   val pickImages =
     rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
@@ -57,7 +57,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
         val next =
           uris.take(8).mapNotNull { uri ->
             try {
-              loadImageAttachment(resolver, uri)
+              loadFileAttachment(resolver, uri)
             } catch (_: Throwable) {
               null
             }
@@ -92,7 +92,7 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       pendingRunCount = pendingRunCount,
       errorText = errorText,
       attachments = attachments,
-      onPickImages = { pickImages.launch("image/*") },
+      onPickImages = { pickImages.launch("*/*") },
       onRemoveAttachment = { id -> attachments.removeAll { it.id == id } },
       onSetThinkingLevel = { level -> viewModel.setChatThinkingLevel(level) },
       onSelectSession = { key -> viewModel.switchChatSession(key) },
@@ -104,8 +104,10 @@ fun ChatSheetContent(viewModel: MainViewModel) {
       onSend = { text ->
         val outgoing =
           attachments.map { att ->
+            // If the MIME type indicates an image, use "image", otherwise use "document" (or "file" depending on backend support)
+            val attachType = if (att.mimeType.startsWith("image/")) "image" else "document"
             OutgoingAttachment(
-              type = "image",
+              type = attachType,
               mimeType = att.mimeType,
               fileName = att.fileName,
               base64 = att.base64,
@@ -118,16 +120,16 @@ fun ChatSheetContent(viewModel: MainViewModel) {
   }
 }
 
-data class PendingImageAttachment(
+data class PendingFileAttachment(
   val id: String,
   val fileName: String,
   val mimeType: String,
   val base64: String,
 )
 
-private suspend fun loadImageAttachment(resolver: ContentResolver, uri: Uri): PendingImageAttachment {
-  val mimeType = resolver.getType(uri) ?: "image/*"
-  val fileName = (uri.lastPathSegment ?: "image").substringAfterLast('/')
+private suspend fun loadFileAttachment(resolver: ContentResolver, uri: Uri): PendingFileAttachment {
+  val mimeType = resolver.getType(uri) ?: "application/octet-stream"
+  val fileName = (uri.lastPathSegment ?: "file").substringAfterLast('/')
   val bytes =
     withContext(Dispatchers.IO) {
       resolver.openInputStream(uri)?.use { input ->
@@ -138,7 +140,7 @@ private suspend fun loadImageAttachment(resolver: ContentResolver, uri: Uri): Pe
     }
   if (bytes.isEmpty()) throw IllegalStateException("empty attachment")
   val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-  return PendingImageAttachment(
+  return PendingFileAttachment(
     id = uri.toString() + "#" + System.currentTimeMillis().toString(),
     fileName = fileName,
     mimeType = mimeType,

@@ -50,7 +50,7 @@ fun ChatComposer(
   thinkingLevel: String,
   pendingRunCount: Int,
   errorText: String?,
-  attachments: List<PendingImageAttachment>,
+  attachments: List<PendingFileAttachment>,
   onPickImages: () -> Unit,
   onRemoveAttachment: (id: String) -> Unit,
   onSetThinkingLevel: (level: String) -> Unit,
@@ -246,7 +246,7 @@ private fun thinkingLabel(raw: String): String {
 
 @Composable
 private fun AttachmentsStrip(
-  attachments: List<PendingImageAttachment>,
+  attachments: List<PendingFileAttachment>,
   onRemoveAttachment: (id: String) -> Unit,
 ) {
   Row(
