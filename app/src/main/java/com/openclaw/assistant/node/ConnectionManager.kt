@@ -1,6 +1,10 @@
 package com.openclaw.assistant.node
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.content.ContextCompat
 import com.openclaw.assistant.BuildConfig
 import com.openclaw.assistant.SecurePrefs
 import com.openclaw.assistant.gateway.GatewayClientInfo
@@ -14,12 +18,19 @@ import com.openclaw.assistant.protocol.OpenClawDeviceCommand
 import com.openclaw.assistant.protocol.OpenClawLocationCommand
 import com.openclaw.assistant.protocol.OpenClawScreenCommand
 import com.openclaw.assistant.protocol.OpenClawSmsCommand
+import com.openclaw.assistant.protocol.OpenClawNotificationsCommand
+import com.openclaw.assistant.protocol.OpenClawSystemCommand
+import com.openclaw.assistant.protocol.OpenClawPhotosCommand
+import com.openclaw.assistant.protocol.OpenClawContactsCommand
+import com.openclaw.assistant.protocol.OpenClawCalendarCommand
+import com.openclaw.assistant.protocol.OpenClawMotionCommand
 import com.openclaw.assistant.protocol.OpenClawCapability
 import com.openclaw.assistant.LocationMode
 import com.openclaw.assistant.VoiceWakeMode
 
 class ConnectionManager(
   private val prefs: SecurePrefs,
+  private val appContext: Context,
   private val cameraEnabled: () -> Boolean,
   private val locationMode: () -> LocationMode,
   private val voiceWakeMode: () -> VoiceWakeMode,
@@ -81,6 +92,10 @@ class ConnectionManager(
     }
   }
 
+  private fun hasPermission(permission: String): Boolean {
+    return ContextCompat.checkSelfPermission(appContext, permission) == PackageManager.PERMISSION_GRANTED
+  }
+
   fun buildInvokeCommands(): List<String> =
     buildList {
       add(OpenClawCanvasCommand.Present.rawValue)
@@ -104,6 +119,48 @@ class ConnectionManager(
       if (smsAvailable()) {
         add(OpenClawSmsCommand.Send.rawValue)
       }
+
+      // Notifications
+      if (hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
+        add(OpenClawNotificationsCommand.List.rawValue)
+        add(OpenClawNotificationsCommand.Actions.rawValue)
+      }
+
+      // System
+      add(OpenClawSystemCommand.Notify.rawValue)
+
+      // Photos
+      val photosPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.READ_MEDIA_IMAGES
+      } else {
+        Manifest.permission.READ_EXTERNAL_STORAGE
+      }
+      if (hasPermission(photosPermission)) {
+        add(OpenClawPhotosCommand.Latest.rawValue)
+      }
+
+      // Contacts
+      if (hasPermission(Manifest.permission.READ_CONTACTS)) {
+        add(OpenClawContactsCommand.Search.rawValue)
+      }
+      if (hasPermission(Manifest.permission.WRITE_CONTACTS)) {
+        add(OpenClawContactsCommand.Add.rawValue)
+      }
+
+      // Calendar
+      if (hasPermission(Manifest.permission.READ_CALENDAR)) {
+        add(OpenClawCalendarCommand.Events.rawValue)
+      }
+      if (hasPermission(Manifest.permission.WRITE_CALENDAR)) {
+        add(OpenClawCalendarCommand.Add.rawValue)
+      }
+
+      // Motion
+      if (hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)) {
+        add(OpenClawMotionCommand.Activity.rawValue)
+        add(OpenClawMotionCommand.Pedometer.rawValue)
+      }
+
       if (BuildConfig.DEBUG) {
         add("debug.logs")
         add("debug.ed25519")
@@ -115,6 +172,33 @@ class ConnectionManager(
     buildList {
       add(OpenClawCapability.Canvas.rawValue)
       add(OpenClawCapability.Screen.rawValue)
+      add(OpenClawCapability.System.rawValue)
+
+      if (hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
+        add(OpenClawCapability.Notifications.rawValue)
+      }
+
+      val photosPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.READ_MEDIA_IMAGES
+      } else {
+        Manifest.permission.READ_EXTERNAL_STORAGE
+      }
+      if (hasPermission(photosPermission)) {
+        add(OpenClawCapability.Photos.rawValue)
+      }
+
+      if (hasPermission(Manifest.permission.READ_CONTACTS) || hasPermission(Manifest.permission.WRITE_CONTACTS)) {
+        add(OpenClawCapability.Contacts.rawValue)
+      }
+
+      if (hasPermission(Manifest.permission.READ_CALENDAR) || hasPermission(Manifest.permission.WRITE_CALENDAR)) {
+        add(OpenClawCapability.Calendar.rawValue)
+      }
+
+      if (hasPermission(Manifest.permission.ACTIVITY_RECOGNITION)) {
+        add(OpenClawCapability.Motion.rawValue)
+      }
+
       if (cameraEnabled()) add(OpenClawCapability.Camera.rawValue)
       if (smsAvailable()) add(OpenClawCapability.Sms.rawValue)
       if (voiceWakeMode() != VoiceWakeMode.Off && hasRecordAudioPermission()) {

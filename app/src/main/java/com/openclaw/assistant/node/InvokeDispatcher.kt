@@ -8,6 +8,12 @@ import com.openclaw.assistant.protocol.OpenClawDeviceCommand
 import com.openclaw.assistant.protocol.OpenClawLocationCommand
 import com.openclaw.assistant.protocol.OpenClawScreenCommand
 import com.openclaw.assistant.protocol.OpenClawSmsCommand
+import com.openclaw.assistant.protocol.OpenClawNotificationsCommand
+import com.openclaw.assistant.protocol.OpenClawSystemCommand
+import com.openclaw.assistant.protocol.OpenClawPhotosCommand
+import com.openclaw.assistant.protocol.OpenClawContactsCommand
+import com.openclaw.assistant.protocol.OpenClawCalendarCommand
+import com.openclaw.assistant.protocol.OpenClawMotionCommand
 
 class InvokeDispatcher(
   private val canvas: CanvasController,
@@ -15,6 +21,12 @@ class InvokeDispatcher(
   private val locationHandler: LocationHandler,
   private val screenHandler: ScreenHandler,
   private val smsHandler: SmsHandler,
+  private val notificationsHandler: NotificationsHandler,
+  private val systemHandler: SystemHandler,
+  private val photosHandler: PhotosHandler,
+  private val contactsHandler: ContactsHandler,
+  private val calendarHandler: CalendarHandler,
+  private val motionHandler: MotionHandler,
   private val a2uiHandler: A2UIHandler,
   private val debugHandler: DebugHandler,
   private val appUpdateHandler: AppUpdateHandler,
@@ -161,6 +173,28 @@ class InvokeDispatcher(
 
       // SMS command
       OpenClawSmsCommand.Send.rawValue -> smsHandler.handleSmsSend(paramsJson)
+
+      // Notifications commands
+      OpenClawNotificationsCommand.List.rawValue -> notificationsHandler.handleList()
+      OpenClawNotificationsCommand.Actions.rawValue -> notificationsHandler.handleActions(paramsJson)
+
+      // System command
+      OpenClawSystemCommand.Notify.rawValue -> systemHandler.handleNotify(paramsJson)
+
+      // Photos command
+      OpenClawPhotosCommand.Latest.rawValue -> photosHandler.handleLatest()
+
+      // Contacts commands
+      OpenClawContactsCommand.Search.rawValue -> contactsHandler.handleSearch(paramsJson)
+      OpenClawContactsCommand.Add.rawValue -> contactsHandler.handleAdd(paramsJson)
+
+      // Calendar commands
+      OpenClawCalendarCommand.Events.rawValue -> calendarHandler.handleEvents(paramsJson)
+      OpenClawCalendarCommand.Add.rawValue -> calendarHandler.handleAdd(paramsJson)
+
+      // Motion commands
+      OpenClawMotionCommand.Activity.rawValue -> motionHandler.handleActivity()
+      OpenClawMotionCommand.Pedometer.rawValue -> motionHandler.handlePedometer()
 
       // Device commands
       OpenClawDeviceCommand.Status.rawValue -> deviceHandler.handleStatus()
