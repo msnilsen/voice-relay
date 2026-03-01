@@ -1,9 +1,7 @@
 package com.openclaw.assistant.node
 
-import android.content.ComponentName
 import android.content.Context
 import android.provider.Settings
-import androidx.core.app.NotificationManagerCompat
 import com.openclaw.assistant.gateway.GatewaySession
 import com.openclaw.assistant.service.OpenClawNotificationListenerService
 import kotlinx.serialization.json.Json
@@ -96,6 +94,7 @@ class NotificationsHandler(
                     GatewaySession.InvokeResult.error("NOT_FOUND", "Notification not found")
                 }
             }
+            "reply" -> GatewaySession.InvokeResult.error("NOT_IMPLEMENTED", "Reply action not yet implemented")
             else -> GatewaySession.InvokeResult.error("INVALID_REQUEST", "Unsupported action: $action")
         }
     }
