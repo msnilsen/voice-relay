@@ -1,6 +1,6 @@
 package com.openclaw.assistant.api
 
-import com.google.firebase.crashlytics.FirebaseCrashlytics
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
@@ -16,10 +16,29 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
 
+enum class RequestFormat {
+    SIMPLE,
+    OPENAI;
+
+    companion object {
+        fun fromString(s: String): RequestFormat = when (s.lowercase()) {
+            "openai" -> OPENAI
+            else -> SIMPLE
+        }
+    }
+}
+
 /**
- * Simple client - POSTs to the configured HTTP connection
+ * HTTP client that POSTs voice commands to a configured webhook endpoint.
+ * Supports two request formats:
+ *   SIMPLE  - {"query": "...", "session_id": "..."}
+ *   OPENAI  - OpenAI Chat Completions format
  */
-class OpenClawClient(private val ignoreSslErrors: Boolean = false) {
+class WebhookClient(private val ignoreSslErrors: Boolean = false) {
+
+    companion object {
+        private const val TAG = "WebhookClient"
+    }
 
     private val client: OkHttpClient = run {
         val builder = OkHttpClient.Builder()
@@ -42,26 +61,14 @@ class OpenClawClient(private val ignoreSslErrors: Boolean = false) {
 
     private val gson = Gson()
 
-    /**
-     * POST message to HTTP connection and return response
-     */
-    suspend fun sendMessage(
-        httpUrl: String,
-        message: String,
-        sessionId: String,
-        authToken: String? = null,
-        agentId: String? = null
-    ): Result<OpenClawResponse> = withContext(Dispatchers.IO) {
-        if (httpUrl.isBlank()) {
-            return@withContext Result.failure(
-                IllegalArgumentException("HTTP connection is not configured")
-            )
-        }
-
-        try {
-            // OpenAI Chat Completions format for /v1/chat/completions
-            val requestBody = JsonObject().apply {
-                addProperty("model", "openclaw")
+    private fun buildRequestBody(message: String, sessionId: String, format: RequestFormat): JsonObject {
+        return when (format) {
+            RequestFormat.SIMPLE -> JsonObject().apply {
+                addProperty("query", message)
+                addProperty("session_id", sessionId)
+            }
+            RequestFormat.OPENAI -> JsonObject().apply {
+                addProperty("model", "default")
                 addProperty("user", sessionId)
                 val messagesArray = JsonArray()
                 val userMessage = JsonObject().apply {
@@ -71,6 +78,25 @@ class OpenClawClient(private val ignoreSslErrors: Boolean = false) {
                 messagesArray.add(userMessage)
                 add("messages", messagesArray)
             }
+        }
+    }
+
+    suspend fun sendMessage(
+        httpUrl: String,
+        message: String,
+        sessionId: String,
+        authToken: String? = null,
+        agentId: String? = null,
+        format: RequestFormat = RequestFormat.SIMPLE
+    ): Result<WebhookResponse> = withContext(Dispatchers.IO) {
+        if (httpUrl.isBlank()) {
+            return@withContext Result.failure(
+                IllegalArgumentException("Webhook URL is not configured")
+            )
+        }
+
+        try {
+            val requestBody = buildRequestBody(message, sessionId, format)
 
             val jsonBody = gson.toJson(requestBody)
                 .toRequestBody("application/json; charset=utf-8".toMediaType())
@@ -86,7 +112,7 @@ class OpenClawClient(private val ignoreSslErrors: Boolean = false) {
             }
 
             if (!agentId.isNullOrBlank()) {
-                requestBuilder.addHeader("x-openclaw-agent-id", agentId)
+                requestBuilder.addHeader("X-Agent-Id", agentId)
             }
 
             val request = requestBuilder.build()
@@ -106,35 +132,29 @@ class OpenClawClient(private val ignoreSslErrors: Boolean = false) {
                     )
                 }
 
-                // Extract response text from JSON
                 val text = extractResponseText(responseBody)
-                Result.success(OpenClawResponse(response = text ?: responseBody))
+                Result.success(WebhookResponse(response = text ?: responseBody))
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            if (!isTransientNetworkError(e)) {
-                FirebaseCrashlytics.getInstance().recordException(e)
-            }
+            Log.e(TAG, "Request failed", e)
             Result.failure(e)
         }
     }
 
-    /**
-     * Test connection to the HTTP connection
-     */
     suspend fun testConnection(
         httpUrl: String,
-        authToken: String?
+        authToken: String?,
+        format: RequestFormat = RequestFormat.SIMPLE
     ): Result<Boolean> = withContext(Dispatchers.IO) {
         if (httpUrl.isBlank()) {
             return@withContext Result.failure(
-                IllegalArgumentException("HTTP connection is not configured")
+                IllegalArgumentException("Webhook URL is not configured")
             )
         }
 
         try {
-            // Try a HEAD request first (lightweight)
             var requestBuilder = Request.Builder()
                 .url(httpUrl)
                 .head()
@@ -144,34 +164,22 @@ class OpenClawClient(private val ignoreSslErrors: Boolean = false) {
             }
 
             var request = requestBuilder.build()
-            
+
             try {
                 client.newCall(request).execute().use { response ->
                     if (response.isSuccessful) return@withContext Result.success(true)
-                    // If Method Not Allowed (405), try POST
                     if (response.code == 405) {
-                         // Fallthrough to POST
+                        // Fallthrough to POST
                     } else {
-                         return@withContext Result.failure(IOException("HTTP ${response.code}"))
+                        return@withContext Result.failure(IOException("HTTP ${response.code}"))
                     }
                 }
             } catch (e: Exception) {
-                // Fallthrough to POST on error (some servers reject HEAD)
+                // Fallthrough to POST
             }
 
-            // Fallback: POST with minimal OpenAI format
-            val requestBody = JsonObject().apply {
-                addProperty("model", "openclaw")
-                addProperty("user", "connection-test")
-                val messagesArray = JsonArray()
-                val testMessage = JsonObject().apply {
-                    addProperty("role", "user")
-                    addProperty("content", "ping")
-                }
-                messagesArray.add(testMessage)
-                add("messages", messagesArray)
-            }
-            
+            val requestBody = buildRequestBody("ping", "connection-test", format)
+
             val jsonBody = gson.toJson(requestBody)
                 .toRequestBody("application/json; charset=utf-8".toMediaType())
 
@@ -185,7 +193,7 @@ class OpenClawClient(private val ignoreSslErrors: Boolean = false) {
             }
 
             request = requestBuilder.build()
-            
+
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     Result.success(true)
@@ -199,39 +207,32 @@ class OpenClawClient(private val ignoreSslErrors: Boolean = false) {
         }
     }
 
-    private fun isTransientNetworkError(e: Throwable): Boolean {
-        return e is java.net.SocketTimeoutException ||
-                e is java.net.SocketException ||
-                e is java.net.ConnectException ||
-                e is java.io.EOFException ||
-                e is java.net.UnknownHostException ||
-                (e.cause != null && isTransientNetworkError(e.cause!!))
-    }
-
     /**
-     * Extract response text from various JSON formats
+     * Extract response text from various JSON formats.
+     * Tries OpenAI format first, then common simple formats.
      */
     private fun extractResponseText(json: String): String? {
         return try {
             val obj = gson.fromJson(json, JsonObject::class.java)
 
-            // Check for API error response
             obj.getAsJsonObject("error")?.let { error ->
                 val errorMsg = error.get("message")?.asString ?: "Unknown error"
                 throw IOException("API Error: $errorMsg")
             }
 
-            // OpenAI format (primary): choices[0].message.content
+            // OpenAI format: choices[0].message.content
             obj.getAsJsonArray("choices")?.let { choices ->
                 choices.firstOrNull()?.asJsonObject
                     ?.getAsJsonObject("message")
                     ?.get("content")?.asString
             }
-            // Fallback formats
+            // Simple/generic formats
             ?: obj.get("response")?.asString
             ?: obj.get("text")?.asString
             ?: obj.get("message")?.asString
             ?: obj.get("content")?.asString
+            ?: obj.get("result")?.asString
+            ?: obj.get("answer")?.asString
         } catch (e: IOException) {
             throw e
         } catch (e: Exception) {
@@ -240,12 +241,13 @@ class OpenClawClient(private val ignoreSslErrors: Boolean = false) {
     }
 }
 
-/**
- * Response wrapper
- */
-data class OpenClawResponse(
+data class WebhookResponse(
     val response: String? = null,
     val error: String? = null
 ) {
     fun getResponseText(): String? = response
 }
+
+// Type aliases for backward compatibility during migration
+typealias OpenClawClient = WebhookClient
+typealias OpenClawResponse = WebhookResponse

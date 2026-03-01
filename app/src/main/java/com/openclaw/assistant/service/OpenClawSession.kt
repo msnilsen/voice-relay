@@ -41,7 +41,8 @@ import androidx.compose.ui.res.stringResource
 import com.openclaw.assistant.R
 import com.openclaw.assistant.OpenClawApplication
 import com.openclaw.assistant.data.SettingsRepository
-import com.openclaw.assistant.api.OpenClawClient
+import com.openclaw.assistant.api.RequestFormat
+import com.openclaw.assistant.api.WebhookClient
 import com.openclaw.assistant.speech.SpeechRecognizerManager
 import com.openclaw.assistant.speech.TTSManager
 import com.openclaw.assistant.speech.TTSState
@@ -72,7 +73,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     }
 
     private val settings = SettingsRepository.getInstance(context)
-    private val apiClient = OpenClawClient(ignoreSslErrors = settings.httpIgnoreSslErrors)
+    private val apiClient = WebhookClient(ignoreSslErrors = settings.httpIgnoreSslErrors)
     private lateinit var speechManager: SpeechRecognizerManager
     private lateinit var ttsManager: TTSManager
     
@@ -544,12 +545,14 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
 
     private suspend fun sendViaHttp(message: String) {
         val agentId = settings.defaultAgentId.takeIf { it.isNotBlank() && it != "main" }
+        val format = RequestFormat.fromString(settings.requestFormat)
         val result = apiClient.sendMessage(
-            httpUrl = settings.getChatCompletionsUrl(),
+            httpUrl = settings.getWebhookUrl(),
             message = message,
             sessionId = settings.sessionId,
             authToken = settings.authToken.takeIf { it.isNotBlank() },
-            agentId = agentId
+            agentId = agentId,
+            format = format
         )
 
         result.fold(

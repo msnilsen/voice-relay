@@ -36,7 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.os.LocaleListCompat
 import com.openclaw.assistant.R
-import com.openclaw.assistant.api.OpenClawClient
+import com.openclaw.assistant.api.RequestFormat
+import com.openclaw.assistant.api.WebhookClient
 
 import com.openclaw.assistant.data.SettingsRepository
 import com.openclaw.assistant.service.NodeForegroundService
@@ -267,7 +268,7 @@ fun SettingsScreen(
     val runtime = remember(context.applicationContext) {
         (context.applicationContext as OpenClawApplication).nodeRuntime
     }
-    val apiClient = remember(httpIgnoreSslErrors) { OpenClawClient(ignoreSslErrors = httpIgnoreSslErrors) }
+    val apiClient = remember(httpIgnoreSslErrors) { WebhookClient(ignoreSslErrors = httpIgnoreSslErrors) }
     
     var isTesting by rememberSaveable { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<TestResult?>(null) }
@@ -905,10 +906,9 @@ fun SettingsScreen(
                                         try {
                                             isTesting = true
                                             testResult = null
-                                            val testUrl = httpInputUrl.trimEnd('/').let { url ->
-                                                if (url.contains("/v1/")) url else "$url/v1/chat/completions"
-                                            }
-                                            val result = apiClient.testConnection(testUrl, httpToken.trim())
+                                            val testUrl = httpInputUrl.trim().trimEnd('/')
+                                            val format = RequestFormat.fromString(settings.requestFormat)
+                                            val result = apiClient.testConnection(testUrl, httpToken.trim(), format)
                                             result.fold(
                                                 onSuccess = {
                                                     testResult = TestResult(success = true, message = context.getString(R.string.connected))

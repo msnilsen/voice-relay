@@ -55,7 +55,7 @@ class SettingsRepository(context: Context) {
 
     // Wake word selection (preset or custom)
     var wakeWordPreset: String
-        get() = prefs.getString(KEY_WAKE_WORD_PRESET, WAKE_WORD_OPEN_CLAW) ?: WAKE_WORD_OPEN_CLAW
+        get() = prefs.getString(KEY_WAKE_WORD_PRESET, WAKE_WORD_JARVIS) ?: WAKE_WORD_JARVIS
         set(value) = prefs.edit().putString(KEY_WAKE_WORD_PRESET, value).apply()
 
     // Custom wake word (when preset is "custom")
@@ -209,10 +209,16 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_USE_NODE_CHAT, false)
         set(value) = prefs.edit().putBoolean(KEY_USE_NODE_CHAT, value).apply()
 
-    // Connection Type (Gateway vs Legacy)
+    // Connection Type (Gateway vs HTTP) - default to HTTP for generic webhook use
     var connectionType: String
-        get() = prefs.getString(KEY_CONNECTION_TYPE, CONNECTION_TYPE_GATEWAY) ?: CONNECTION_TYPE_GATEWAY
+        get() = prefs.getString(KEY_CONNECTION_TYPE, CONNECTION_TYPE_HTTP) ?: CONNECTION_TYPE_HTTP
         set(value) = prefs.edit().putString(KEY_CONNECTION_TYPE, value).apply()
+
+    // Request format: "simple" sends {"query":"...", "session_id":"..."}
+    //                 "openai" sends OpenAI Chat Completions format
+    var requestFormat: String
+        get() = prefs.getString(KEY_REQUEST_FORMAT, REQUEST_FORMAT_SIMPLE) ?: REQUEST_FORMAT_SIMPLE
+        set(value) = prefs.edit().putString(KEY_REQUEST_FORMAT, value).apply()
 
     // Ignore SSL certificate errors for HTTPS connections (for self-signed certs)
     var httpIgnoreSslErrors: Boolean
@@ -226,20 +232,15 @@ class SettingsRepository(context: Context) {
         set(value) = prefs.edit().putString(KEY_WAKEWORD_CONNECTION_TYPE, value).apply()
 
     /**
-     * Get the chat completions URL.
-     * Supports both base URL (http://server) and full path (http://server/v1/chat/completions).
+     * Get the webhook URL exactly as configured, with no path manipulation.
      */
-    fun getChatCompletionsUrl(): String {
-        val url = httpUrl.trim().trimEnd('/')
-        if (url.isBlank()) return ""
-        return if (url.contains("/v1/")) url
-        else "$url/v1/chat/completions"
+    fun getWebhookUrl(): String {
+        return httpUrl.trim().trimEnd('/')
     }
 
-    /**
-     * Get the base URL (without path) for WebSocket connections.
-     * Extracts base from full path URLs, or returns as-is for base URLs.
-     */
+    @Deprecated("Use getWebhookUrl()", replaceWith = ReplaceWith("getWebhookUrl()"))
+    fun getChatCompletionsUrl(): String = getWebhookUrl()
+
     fun getBaseUrl(): String {
         val url = httpUrl.trimEnd('/')
         val idx = url.indexOf("/v1/")
@@ -282,6 +283,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_DEFAULT_AGENT_ID = "default_agent_id"
         private const val KEY_USE_NODE_CHAT = "use_node_chat"
         private const val KEY_CONNECTION_TYPE = "connection_type"
+        private const val KEY_REQUEST_FORMAT = "request_format"
         private const val KEY_HTTP_IGNORE_SSL_ERRORS = "http_ignore_ssl_errors"
         private const val KEY_WAKEWORD_CONNECTION_TYPE = "wakeword_connection_type"
         private const val KEY_SPEECH_SILENCE_TIMEOUT = "speech_silence_timeout"
@@ -312,6 +314,9 @@ class SettingsRepository(context: Context) {
         
         const val CONNECTION_TYPE_GATEWAY = "gateway"
         const val CONNECTION_TYPE_HTTP = "http"
+
+        const val REQUEST_FORMAT_SIMPLE = "simple"
+        const val REQUEST_FORMAT_OPENAI = "openai"
         
         const val GOOGLE_TTS_PACKAGE = "com.google.android.tts"
         

@@ -6,8 +6,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("kotlin-kapt")
     id("org.jetbrains.kotlin.plugin.serialization")
-    id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
+    // Firebase removed - using local logging instead
 }
 
 // Load local.properties
@@ -84,8 +83,7 @@ android {
             isMinifyEnabled = false
             // CI sets FIREBASE_ENABLED=false for fork PRs so the APK launches without a real API key.
             // Defaults to true for local development.
-            val firebaseEnabled = System.getenv("FIREBASE_ENABLED")?.toBooleanStrictOrNull() ?: true
-            buildConfigField("boolean", "FIREBASE_ENABLED", firebaseEnabled.toString())
+            buildConfigField("boolean", "FIREBASE_ENABLED", "false")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -93,7 +91,7 @@ android {
         }
         release {
             isMinifyEnabled = true
-            buildConfigField("boolean", "FIREBASE_ENABLED", "true")
+            buildConfigField("boolean", "FIREBASE_ENABLED", "false")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -154,7 +152,7 @@ androidComponents {
             .forEach { output ->
                 val versionName = output.versionName.orNull ?: "0"
                 val buildType = variant.buildType
-                output.outputFileName = "openclaw-${versionName}-${buildType}.apk"
+                output.outputFileName = "voice-relay-${versionName}-${buildType}.apk"
             }
     }
 }
@@ -251,10 +249,7 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
 
-    // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:32.7.4"))
-    implementation("com.google.firebase:firebase-crashlytics")
-    implementation("com.google.firebase:firebase-analytics")
+    // Firebase removed
 }
 
 tasks.withType<Test>().configureEach {

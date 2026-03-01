@@ -38,7 +38,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.openclaw.assistant.OpenClawApplication
 import com.openclaw.assistant.R
-import com.openclaw.assistant.api.OpenClawClient
+import com.openclaw.assistant.api.RequestFormat
+import com.openclaw.assistant.api.WebhookClient
 import com.openclaw.assistant.data.SettingsRepository
 import com.openclaw.assistant.ui.components.ConnectionState
 import com.openclaw.assistant.ui.components.StatusIndicator
@@ -576,7 +577,7 @@ private fun FinalCheckStep(
     val isPairingRequired by runtime.isPairingRequired.collectAsState()
 
     val scope = rememberCoroutineScope()
-    val apiClient = remember { OpenClawClient() }
+    val apiClient = remember { WebhookClient() }
     var attemptedConnect by remember { mutableStateOf(false) }
     var pairingDetected by remember { mutableStateOf(false) }
     var isFinishing by remember { mutableStateOf(false) }
@@ -585,8 +586,9 @@ private fun FinalCheckStep(
         scope.launch {
             isFinishing = true
             if (settings.httpUrl.isNotBlank()) {
-                val testUrl = settings.getChatCompletionsUrl()
-                val result = apiClient.testConnection(testUrl, settings.authToken)
+                val testUrl = settings.getWebhookUrl()
+                val format = RequestFormat.fromString(settings.requestFormat)
+                val result = apiClient.testConnection(testUrl, settings.authToken, format)
                 if (result.isSuccess) {
                     settings.isVerified = true
                 } else {

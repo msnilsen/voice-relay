@@ -6,7 +6,8 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.openclaw.assistant.OpenClawApplication
-import com.openclaw.assistant.api.OpenClawClient
+import com.openclaw.assistant.api.RequestFormat
+import com.openclaw.assistant.api.WebhookClient
 import com.openclaw.assistant.data.SettingsRepository
 import com.openclaw.assistant.chat.ChatMarkdownPreprocessor
 import com.openclaw.assistant.gateway.AgentInfo
@@ -69,7 +70,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val settings = SettingsRepository.getInstance(application)
     private val chatRepository = com.openclaw.assistant.data.repository.ChatRepository.getInstance(application)
-    private val apiClient = OpenClawClient(ignoreSslErrors = settings.httpIgnoreSslErrors)
+    private val apiClient = WebhookClient(ignoreSslErrors = settings.httpIgnoreSslErrors)
     private val nodeRuntime = (application as OpenClawApplication).nodeRuntime
     private val speechManager = SpeechRecognizerManager(application)
     private val toneGenerator = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 100)
@@ -520,9 +521,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun sendViaHttp(sessionId: String, text: String) {
-        val httpUrl = settings.getChatCompletionsUrl()
+        val httpUrl = settings.getWebhookUrl()
         val authToken = settings.authToken.takeIf { it.isNotBlank() }
         val effectiveAgentId = getEffectiveAgentId()
+        val format = RequestFormat.fromString(settings.requestFormat)
 
         chatRepository.applicationScope.launch {
             try {
@@ -531,7 +533,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     message = text,
                     sessionId = sessionId,
                     authToken = authToken,
-                    agentId = effectiveAgentId
+                    agentId = effectiveAgentId,
+                    format = format
                 )
 
                 result.fold(
