@@ -699,6 +699,7 @@ class NodeRuntime(context: Context) {
     _pendingGatewayTrust.value = null
     operatorSession.disconnect()
     nodeSession.disconnect()
+    motionHandler.close()
   }
 
   fun handleCanvasA2UIActionFromWebView(payloadJson: String) {

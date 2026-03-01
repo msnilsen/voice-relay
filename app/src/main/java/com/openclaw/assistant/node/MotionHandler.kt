@@ -57,6 +57,10 @@ class MotionHandler(private val appContext: Context) : SensorEventListener {
         return GatewaySession.InvokeResult.ok(payload.toString())
     }
 
+    fun close() {
+        sensorManager.unregisterListener(this)
+    }
+
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_STEP_COUNTER) {
             currentSteps = event.values[0]

@@ -12,7 +12,7 @@ import com.openclaw.assistant.node.NotificationManager
 class OpenClawNotificationListenerService : NotificationListenerService() {
 
     companion object {
-        var manager: NotificationManager? = null
+        @Volatile var manager: NotificationManager? = null
         @Volatile var instance: OpenClawNotificationListenerService? = null
     }
 
