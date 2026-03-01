@@ -113,7 +113,7 @@
     <string name="openai_voice_label">Voix</string>
     <string name="openai_model_label">Modèle</string>
     <string name="voicevox_style_label">Caractère / Style</string>
-    <string name="voicevox_terms_notice">J'accepte les CGU de VOICEVOX</string>
+    <string name="voicevox_terms_notice">J\'accepte les CGU de VOICEVOX</string>
     <string name="get_api_key">Obtenir la clé API ici</string>
     <string name="preset_voice">Voix prédéfinie</string>
     <string name="custom_voice">ID personnalisé</string>
@@ -125,17 +125,17 @@
     <string name="voicevox_downloading">Téléchargement des données audio</string>
     <string name="voicevox_download_required">Téléchargement des données audio requis</string>
     <string name="voicevox_selected_character">Nom : %1$s (%2$s)</string>
-    <string name="voicevox_terms_title">Conditions d'utilisation de VOICEVOX</string>
-    <string name="voicevox_terms_description">Pour utiliser VOICEVOX, vous devez accepter les conditions d'utilisation. Les données audio sont générées à l'aide de bibliothèques open source.</string>
-    <string name="voicevox_view_terms">Voir les conditions d'utilisation en détail</string>
-    <string name="voicevox_accept_terms">J'accepte les conditions d'utilisation</string>
-    <string name="voicevox_terms_dialog_title">Conditions d'utilisation de VOICEVOX</string>
-    <string name="voicevox_terms_full">Lors de l'utilisation des données audio VOICEVOX, vous devez accepter les conditions suivantes :
+    <string name="voicevox_terms_title">Conditions d\'utilisation de VOICEVOX</string>
+    <string name="voicevox_terms_description">Pour utiliser VOICEVOX, vous devez accepter les conditions d\'utilisation. Les données audio sont générées à l\'aide de bibliothèques open source.</string>
+    <string name="voicevox_view_terms">Voir les conditions d\'utilisation en détail</string>
+    <string name="voicevox_accept_terms">J\'accepte les conditions d\'utilisation</string>
+    <string name="voicevox_terms_dialog_title">Conditions d\'utilisation de VOICEVOX</string>
+    <string name="voicevox_terms_full">Lors de l\'utilisation des données audio VOICEVOX, vous devez accepter les conditions suivantes :
 
 1. Les données audio peuvent être utilisées à des fins personnelles et commerciales.
 2. Les droits de la bibliothèque audio appartiennent au titulaire des droits de chaque personnage.
 3. La redistribution des données audio est interdite.
-4. L'utilisation à des fins illégales est interdite.
+4. L\'utilisation à des fins illégales est interdite.
 
 Pour plus de détails, consultez le site officiel de VOICEVOX.</string>
     <string name="voicevox_downloaded_files">Données audio téléchargées</string>
@@ -429,27 +429,27 @@ Pour plus de détails, consultez le site officiel de VOICEVOX.</string>
     <string name="credits_voicevox_lib_title">Bibliothèque audio VOICEVOX</string>
     <string name="credits_voicevox_lib_description">Cette application utilise la bibliothèque vocale de VOICEVOX.</string>
     <string name="credits_voicevox_current_voice">Voix utilisée</string>
-    <string name="credits_voicevox_open_terms">Ouvrir les conditions d'utilisation</string>
+    <string name="credits_voicevox_open_terms">Ouvrir les conditions d\'utilisation</string>
     <string name="credits_voicevox_about_title">À propos de VOICEVOX</string>
-    <string name="credits_voicevox_about_description">VOICEVOX est un logiciel de synthèse vocale japonais utilisable à des fins commerciales et non commerciales. Pour les conditions d'utilisation détaillées, consultez le site officiel de chaque personnage.</string>
+    <string name="credits_voicevox_about_description">VOICEVOX est un logiciel de synthèse vocale japonais utilisable à des fins commerciales et non commerciales. Pour les conditions d\'utilisation détaillées, consultez le site officiel de chaque personnage.</string>
     <string name="credits_voicevox_official_site">Site officiel de VOICEVOX</string>
-    <string name="credits_voicevox_terms_link">Conditions d'utilisation de VOICEVOX</string>
+    <string name="credits_voicevox_terms_link">Conditions d\'utilisation de VOICEVOX</string>
     <string name="credits_voicevox_unknown_character">ID de style : %1$d (aucune information détaillée)</string>
     <string name="tts_provider_local_name">TTS local</string>
     <string name="tts_provider_local_description">Synthèse vocale standard Android</string>
     <string name="tts_provider_elevenlabs_description">Synthèse vocale cloud haute qualité</string>
     <string name="tts_provider_voicevox_description">Synthèse vocale japonaise (Zundamon, etc.)</string>
     <string name="tts_error_unknown_type">Type TTS inconnu : %1$s</string>
-    <string name="tts_error_provider_unavailable">%1$s n'est pas disponible</string>
+    <string name="tts_error_provider_unavailable">%1$s n\'est pas disponible</string>
     <string name="tts_error_elevenlabs_no_apikey">Clé API ElevenLabs non configurée</string>
     <string name="tts_error_openai_no_apikey">Clé API OpenAI non configurée</string>
     <string name="tts_error_voicevox_dict_missing">Dictionnaire OpenJTalk introuvable</string>
     <string name="tts_error_voicevox_dict_required">Le dictionnaire OpenJTalk est requis</string>
     <string name="tts_error_voicevox_not_initialized">VOICEVOX non initialisé</string>
-    <string name="tts_error_voicevox_terms_required">Veuillez accepter les conditions d'utilisation de VOICEVOX</string>
+    <string name="tts_error_voicevox_terms_required">Veuillez accepter les conditions d\'utilisation de VOICEVOX</string>
     <string name="tts_error_not_initialized">Non initialisé</string>
     <string name="tts_error_stopped">Arrêté</string>
-    <string name="tts_error_generic">Une erreur s'est produite</string>
+    <string name="tts_error_generic">Une erreur s\'est produite</string>
     <string name="openai_model_desc_latest">Le plus récent et le plus fiable</string>
     <string name="openai_model_desc_low_latency">Faible latence</string>
     <string name="openai_model_desc_hd">Haute qualité</string>
