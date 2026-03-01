@@ -27,6 +27,7 @@ import com.openclaw.assistant.protocol.OpenClawMotionCommand
 import com.openclaw.assistant.protocol.OpenClawCapability
 import com.openclaw.assistant.LocationMode
 import com.openclaw.assistant.VoiceWakeMode
+import android.provider.Settings
 
 class ConnectionManager(
   private val prefs: SecurePrefs,
@@ -96,6 +97,11 @@ class ConnectionManager(
     return ContextCompat.checkSelfPermission(appContext, permission) == PackageManager.PERMISSION_GRANTED
   }
 
+  private fun isNotificationListenerEnabled(): Boolean {
+    val enabledPackages = Settings.Secure.getString(appContext.contentResolver, "enabled_notification_listeners")
+    return enabledPackages?.contains(appContext.packageName) == true
+  }
+
   fun buildInvokeCommands(): List<String> =
     buildList {
       add(OpenClawCanvasCommand.Present.rawValue)
@@ -121,7 +127,7 @@ class ConnectionManager(
       }
 
       // Notifications
-      if (hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
+      if (isNotificationListenerEnabled()) {
         add(OpenClawNotificationsCommand.List.rawValue)
         add(OpenClawNotificationsCommand.Actions.rawValue)
       }
@@ -174,7 +180,7 @@ class ConnectionManager(
       add(OpenClawCapability.Screen.rawValue)
       add(OpenClawCapability.System.rawValue)
 
-      if (hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
+      if (isNotificationListenerEnabled()) {
         add(OpenClawCapability.Notifications.rawValue)
       }
 

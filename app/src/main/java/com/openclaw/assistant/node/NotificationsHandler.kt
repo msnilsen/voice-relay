@@ -1,9 +1,9 @@
 package com.openclaw.assistant.node
 
-import android.Manifest
+import android.content.ComponentName
 import android.content.Context
-import android.content.pm.PackageManager
-import androidx.core.content.ContextCompat
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 import com.openclaw.assistant.gateway.GatewaySession
 import com.openclaw.assistant.service.OpenClawNotificationListenerService
 import kotlinx.serialization.json.Json
@@ -18,18 +18,16 @@ class NotificationsHandler(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    private fun hasPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
+    fun isServiceEnabled(): Boolean {
+        val enabledPackages = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+        return enabledPackages?.contains(context.packageName) == true
     }
 
     fun handleList(): GatewaySession.InvokeResult {
-        if (!hasPermission()) {
+        if (!isServiceEnabled()) {
             return GatewaySession.InvokeResult.error(
                 code = "NOTIFICATIONS_PERMISSION_REQUIRED",
-                message = "NOTIFICATIONS_PERMISSION_REQUIRED: grant Notification permission"
+                message = "NOTIFICATIONS_PERMISSION_REQUIRED: grant Notification Listener access in Settings"
             )
         }
 
@@ -51,12 +49,15 @@ class NotificationsHandler(
     }
 
     fun handleActions(paramsJson: String?): GatewaySession.InvokeResult {
-        if (!hasPermission()) {
+        if (!isServiceEnabled()) {
             return GatewaySession.InvokeResult.error(
                 code = "NOTIFICATIONS_PERMISSION_REQUIRED",
-                message = "NOTIFICATIONS_PERMISSION_REQUIRED: grant Notification permission"
+                message = "NOTIFICATIONS_PERMISSION_REQUIRED: grant Notification Listener access in Settings"
             )
         }
+
+        val service = OpenClawNotificationListenerService.instance
+            ?: return GatewaySession.InvokeResult.error("SERVICE_UNAVAILABLE", "Notification Listener Service not running")
 
         val params = paramsJson?.let {
             try {
@@ -73,9 +74,29 @@ class NotificationsHandler(
             return GatewaySession.InvokeResult.error("INVALID_REQUEST", "Key and action are required")
         }
 
-        // Implementation for performing action on a notification (e.g., dismiss)
-        // This usually requires calling methods on OpenClawNotificationListenerService instance
-        // For now, return ok
-        return GatewaySession.InvokeResult.ok("""{"ok":true}""")
+        return when (action.lowercase()) {
+            "dismiss" -> {
+                try {
+                    service.cancelNotification(key)
+                    GatewaySession.InvokeResult.ok("""{"ok":true}""")
+                } catch (e: Exception) {
+                    GatewaySession.InvokeResult.error("ACTION_FAILED", "Failed to dismiss: ${e.message}")
+                }
+            }
+            "open" -> {
+                val sbn = notificationManager.getNotification(key)
+                if (sbn != null) {
+                    try {
+                        sbn.notification.contentIntent.send()
+                        GatewaySession.InvokeResult.ok("""{"ok":true}""")
+                    } catch (e: Exception) {
+                        GatewaySession.InvokeResult.error("ACTION_FAILED", "Failed to open: ${e.message}")
+                    }
+                } else {
+                    GatewaySession.InvokeResult.error("NOT_FOUND", "Notification not found")
+                }
+            }
+            else -> GatewaySession.InvokeResult.error("INVALID_REQUEST", "Unsupported action: $action")
+        }
     }
 }

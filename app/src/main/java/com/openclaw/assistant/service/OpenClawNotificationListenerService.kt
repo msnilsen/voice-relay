@@ -13,6 +13,17 @@ class OpenClawNotificationListenerService : NotificationListenerService() {
 
     companion object {
         var manager: NotificationManager? = null
+        @Volatile var instance: OpenClawNotificationListenerService? = null
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (instance == this) instance = null
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -29,9 +40,14 @@ class OpenClawNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        // Initialize active notifications if needed
+        instance = this
         activeNotifications?.forEach { sbn ->
             manager?.onNotificationPosted(sbn)
         }
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        if (instance == this) instance = null
     }
 }

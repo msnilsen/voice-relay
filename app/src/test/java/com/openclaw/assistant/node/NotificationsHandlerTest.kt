@@ -7,33 +7,37 @@ import io.mockk.mockk
 import io.mockk.mockkStatic
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
-import android.Manifest
 import android.service.notification.StatusBarNotification
 import io.mockk.unmockkStatic
+import android.provider.Settings
+import android.content.ContentResolver
 
 class NotificationsHandlerTest {
     private val context = mockk<Context>()
+    private val contentResolver = mockk<ContentResolver>()
     private val notificationManager = mockk<NotificationManager>()
     private val handler = NotificationsHandler(context, notificationManager)
 
     @Test
-    fun `handleList returns error when permission missing`() {
-        mockkStatic(ContextCompat::class)
-        every { ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) } returns PackageManager.PERMISSION_DENIED
+    fun `handleList returns error when service disabled`() {
+        every { context.contentResolver } returns contentResolver
+        every { context.packageName } returns "com.openclaw.assistant"
+        mockkStatic(Settings.Secure::class)
+        every { Settings.Secure.getString(contentResolver, "enabled_notification_listeners") } returns ""
 
         val result = handler.handleList()
 
         assertEquals(false, result.ok)
         assertEquals("NOTIFICATIONS_PERMISSION_REQUIRED", result.error?.code)
-        unmockkStatic(ContextCompat::class)
+        unmockkStatic(Settings.Secure::class)
     }
 
     @Test
-    fun `handleList returns notifications when permission granted`() {
-        mockkStatic(ContextCompat::class)
-        every { ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) } returns PackageManager.PERMISSION_GRANTED
+    fun `handleList returns notifications when service enabled`() {
+        every { context.contentResolver } returns contentResolver
+        every { context.packageName } returns "com.openclaw.assistant"
+        mockkStatic(Settings.Secure::class)
+        every { Settings.Secure.getString(contentResolver, "enabled_notification_listeners") } returns "com.openclaw.assistant"
 
         val sbn = mockk<StatusBarNotification>()
         every { sbn.key } returns "test_key"
@@ -47,9 +51,8 @@ class NotificationsHandlerTest {
         val result = handler.handleList()
 
         assertEquals(true, result.ok)
-        // Check for specific substrings in the JSON instead of exact match if order or formatting varies
         val json = result.payloadJson ?: ""
         assertEquals(true, json.contains("test_key"))
-        unmockkStatic(ContextCompat::class)
+        unmockkStatic(Settings.Secure::class)
     }
 }

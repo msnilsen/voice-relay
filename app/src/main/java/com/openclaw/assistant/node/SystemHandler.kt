@@ -1,10 +1,13 @@
 package com.openclaw.assistant.node
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.openclaw.assistant.R
 import com.openclaw.assistant.gateway.GatewaySession
 import kotlinx.serialization.json.Json
@@ -16,6 +19,12 @@ class SystemHandler(private val appContext: Context) {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun handleNotify(paramsJson: String?): GatewaySession.InvokeResult {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                return GatewaySession.InvokeResult.error("PERMISSION_REQUIRED", "POST_NOTIFICATIONS permission required")
+            }
+        }
+
         val params = paramsJson?.let {
             try {
                 json.parseToJsonElement(it).jsonObject

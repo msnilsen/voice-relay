@@ -33,6 +33,22 @@ class CalendarHandler(private val appContext: Context) {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    private fun getFirstWritableCalendarId(): Long? {
+        val projection = arrayOf(CalendarContract.Calendars._ID)
+        val selection = "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ?"
+        val selectionArgs = arrayOf(CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR.toString())
+        val cursor = appContext.contentResolver.query(
+            CalendarContract.Calendars.CONTENT_URI,
+            projection,
+            selection,
+            selectionArgs,
+            null
+        )
+        return cursor?.use {
+            if (it.moveToFirst()) it.getLong(0) else null
+        }
+    }
+
     fun handleEvents(paramsJson: String?): GatewaySession.InvokeResult {
         if (!hasReadPermission()) {
             return GatewaySession.InvokeResult.error(
@@ -113,6 +129,8 @@ class CalendarHandler(private val appContext: Context) {
             )
         }
 
+        val calendarId = getFirstWritableCalendarId() ?: return GatewaySession.InvokeResult.error("CALENDAR_NOT_FOUND", "No writable calendar found")
+
         val params = paramsJson?.let {
             try {
                 json.parseToJsonElement(it).jsonObject
@@ -133,7 +151,7 @@ class CalendarHandler(private val appContext: Context) {
             put(CalendarContract.Events.DTSTART, startTime)
             put(CalendarContract.Events.DTEND, endTime)
             put(CalendarContract.Events.TITLE, title)
-            put(CalendarContract.Events.CALENDAR_ID, 1) // Assuming default calendar
+            put(CalendarContract.Events.CALENDAR_ID, calendarId)
             put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
         }
 
