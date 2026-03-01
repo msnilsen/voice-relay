@@ -10,3 +10,6 @@ firebase-debug.log
 
 # VOICEVOX model files (large binary, downloaded at runtime)
 *.vvm
+
+# Agent instructions
+AGENTS.md

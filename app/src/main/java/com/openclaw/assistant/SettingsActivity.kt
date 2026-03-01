@@ -1,6 +1,7 @@
 package com.openclaw.assistant
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -189,6 +190,20 @@ object VoiceVoxCharacters {
 class SettingsActivity : ComponentActivity() {
 
     private lateinit var settings: SettingsRepository
+
+    override fun attachBaseContext(newBase: Context) {
+        val tag = try {
+            SettingsRepository.getInstance(newBase).appLanguage.trim()
+        } catch (e: Exception) { "" }
+        if (tag.isNotBlank()) {
+            val locale = java.util.Locale.forLanguageTag(tag)
+            val config = android.content.res.Configuration(newBase.resources.configuration)
+            config.setLocale(locale)
+            super.attachBaseContext(newBase.createConfigurationContext(config))
+        } else {
+            super.attachBaseContext(newBase)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -952,148 +967,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // === LANGUAGE SECTION ===
-            CollapsibleSection(title = stringResource(R.string.language_section)) {
-
-            // --- Display Language card ---
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        stringResource(R.string.display_language_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    ExposedDropdownMenuBox(
-                        expanded = showDisplayLanguageMenu,
-                        onExpandedChange = { showDisplayLanguageMenu = it }
-                    ) {
-                        val currentLabel = if (appLanguage.isEmpty()) {
-                            stringResource(R.string.display_language_system_default)
-                        } else {
-                            DISPLAY_LANGUAGE_OPTIONS.find { it.first == appLanguage }?.second ?: appLanguage
-                        }
-
-                        OutlinedTextField(
-                            value = currentLabel,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(stringResource(R.string.display_language_label)) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDisplayLanguageMenu) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor()
-                        )
-
-                        ExposedDropdownMenu(
-                            expanded = showDisplayLanguageMenu,
-                            onDismissRequest = { showDisplayLanguageMenu = false }
-                        ) {
-                            DISPLAY_LANGUAGE_OPTIONS.forEach { (tag, label) ->
-                                DropdownMenuItem(
-                                    text = { Text(label) },
-                                    onClick = {
-                                        appLanguage = tag
-                                        showDisplayLanguageMenu = false
-                                    },
-                                    leadingIcon = {
-                                        if (appLanguage == tag) {
-                                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // --- Speech Language card ---
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        stringResource(R.string.speech_language_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    if (isLoadingLanguages) {
-                        OutlinedTextField(
-                            value = stringResource(R.string.speech_language_loading),
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(stringResource(R.string.speech_language_label)) },
-                            trailingIcon = {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    } else {
-                        ExposedDropdownMenuBox(
-                            expanded = showLanguageMenu,
-                            onExpandedChange = { showLanguageMenu = it }
-                        ) {
-                            val currentLabel = if (speechLanguage.isEmpty()) {
-                                stringResource(R.string.speech_language_system_default)
-                            } else {
-                                speechLanguageOptions.find { it.first == speechLanguage }?.second
-                                    ?: speechLanguage
-                            }
-
-                            OutlinedTextField(
-                                value = currentLabel,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text(stringResource(R.string.speech_language_label)) },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showLanguageMenu) },
-                                modifier = Modifier.fillMaxWidth().menuAnchor()
-                            )
-
-                            ExposedDropdownMenu(
-                                expanded = showLanguageMenu,
-                                onDismissRequest = { showLanguageMenu = false }
-                            ) {
-                                speechLanguageOptions.forEach { (tag, label) ->
-                                    DropdownMenuItem(
-                                        text = { Text(label) },
-                                        onClick = {
-                                            speechLanguage = tag
-                                            showLanguageMenu = false
-                                        },
-                                        leadingIcon = {
-                                            if (speechLanguage == tag) {
-                                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            } // end CollapsibleSection for Language
-
-            Spacer(modifier = Modifier.height(24.dp))
-
             // === VOICE SECTION ===
             CollapsibleSection(title = stringResource(R.string.voice)) {
 
@@ -1132,11 +1005,11 @@ fun SettingsScreen(
                             onExpandedChange = { showTtsTypeMenu = it }
                         ) {
                             val ttsTypeLabel = when (ttsType) {
-                                SettingsRepository.TTS_TYPE_LOCAL -> "システムTTS"
+                                SettingsRepository.TTS_TYPE_LOCAL -> "System TTS"
                                 SettingsRepository.TTS_TYPE_ELEVENLABS -> "ElevenLabs"
                                 SettingsRepository.TTS_TYPE_OPENAI -> "OpenAI"
                                 SettingsRepository.TTS_TYPE_VOICEVOX -> "VOICEVOX"
-                                else -> "システムTTS"
+                                else -> "System TTS"
                             }
                             
                             OutlinedTextField(
@@ -1153,7 +1026,7 @@ fun SettingsScreen(
                                 onDismissRequest = { showTtsTypeMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("システムTTS") },
+                                    text = { Text("System TTS") },
                                     onClick = {
                                         ttsType = SettingsRepository.TTS_TYPE_LOCAL
                                         showTtsTypeMenu = false
@@ -1522,6 +1395,148 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // === LANGUAGE SECTION ===
+            CollapsibleSection(title = stringResource(R.string.language_section)) {
+
+            // --- Display Language card ---
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        stringResource(R.string.display_language_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    ExposedDropdownMenuBox(
+                        expanded = showDisplayLanguageMenu,
+                        onExpandedChange = { showDisplayLanguageMenu = it }
+                    ) {
+                        val currentLabel = if (appLanguage.isEmpty()) {
+                            stringResource(R.string.display_language_system_default)
+                        } else {
+                            DISPLAY_LANGUAGE_OPTIONS.find { it.first == appLanguage }?.second ?: appLanguage
+                        }
+
+                        OutlinedTextField(
+                            value = currentLabel,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.display_language_label)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDisplayLanguageMenu) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = showDisplayLanguageMenu,
+                            onDismissRequest = { showDisplayLanguageMenu = false }
+                        ) {
+                            DISPLAY_LANGUAGE_OPTIONS.forEach { (tag, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        appLanguage = tag
+                                        showDisplayLanguageMenu = false
+                                    },
+                                    leadingIcon = {
+                                        if (appLanguage == tag) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // --- Speech Language card ---
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        stringResource(R.string.speech_language_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (isLoadingLanguages) {
+                        OutlinedTextField(
+                            value = stringResource(R.string.speech_language_loading),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.speech_language_label)) },
+                            trailingIcon = {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        ExposedDropdownMenuBox(
+                            expanded = showLanguageMenu,
+                            onExpandedChange = { showLanguageMenu = it }
+                        ) {
+                            val currentLabel = if (speechLanguage.isEmpty()) {
+                                stringResource(R.string.speech_language_system_default)
+                            } else {
+                                speechLanguageOptions.find { it.first == speechLanguage }?.second
+                                    ?: speechLanguage
+                            }
+
+                            OutlinedTextField(
+                                value = currentLabel,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.speech_language_label)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showLanguageMenu) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = showLanguageMenu,
+                                onDismissRequest = { showLanguageMenu = false }
+                            ) {
+                                speechLanguageOptions.forEach { (tag, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            speechLanguage = tag
+                                            showLanguageMenu = false
+                                        },
+                                        leadingIcon = {
+                                            if (speechLanguage == tag) {
+                                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            } // end CollapsibleSection for Language
 
             Spacer(modifier = Modifier.height(24.dp))
 

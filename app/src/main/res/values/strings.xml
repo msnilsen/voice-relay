@@ -515,7 +515,7 @@
     <string name="credits_voicevox_unknown_character">スタイルID: %1$d（詳細情報なし）</string>
     <string name="credits_support_title">開発をサポートする</string>
     <string name="credits_support_description">このアプリが役に立った場合は、Ko-fiでの支援をご検討ください。</string>
-    <string name="credits_support_kofi_button">Ko-fiでサポートする</string>
+    <string name="credits_support_kofi_button">Support the Developer</string>
 
     <!-- TTS Provider Names and Descriptions -->
     <string name="tts_provider_local_name">ローカルTTS</string>
