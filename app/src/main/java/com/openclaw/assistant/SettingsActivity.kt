@@ -1345,7 +1345,7 @@ fun SettingsScreen(
                     OutlinedButton(
                         onClick = {
                             try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/R5R51S97C4"))
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/matthewnilsen"))
                                 context.startActivity(intent)
                             } catch (e: ActivityNotFoundException) {
                                 // No browser available; ignore
