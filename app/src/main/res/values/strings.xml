@@ -38,8 +38,11 @@
     <string name="request_format_label">Request Format</string>
     <string name="request_format_simple">Simple JSON</string>
     <string name="request_format_openai">OpenAI Chat</string>
+    <string name="request_format_custom">Custom</string>
     <string name="request_format_simple_desc">Sends {"query": "...", "session_id": "..."}. Works with n8n, custom APIs, and most webhook endpoints.</string>
     <string name="request_format_openai_desc">Sends OpenAI Chat Completions format. Compatible with OpenAI, Azure OpenAI, and similar APIs.</string>
+    <string name="request_format_custom_desc">Define your own JSON body. Use {{query}} where the spoken text should go and {{session_id}} for the session identifier.</string>
+    <string name="custom_json_template_label">JSON Template</string>
     <string name="webhook_url_hint">http://your-server/webhook/endpoint</string>
     <string name="auth_token_label">Auth Token (optional)</string>
     <string name="auth_token_hint">Optional</string>
@@ -65,6 +68,7 @@
     <string name="error_no_webhook">Please configure HTTP connection</string>
     <string name="webhook_configured">Webhook configured</string>
     <string name="webhook_not_configured">Webhook not configured</string>
+    <string name="connection_failed_title">Connection failed</string>
 
     <string name="error_speech">Speech recognition error</string>
     

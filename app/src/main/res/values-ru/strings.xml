@@ -35,6 +35,10 @@
     <string name="settings_title">Настройки</string>
     <string name="webhook_url_label">URL-адрес сервера</string>
     <string name="webhook_url_hint">https://ваш-сервер</string>
+    <string name="request_format_custom">Пользовательский</string>
+    <string name="request_format_custom_desc">Определите собственное тело JSON. Используйте {{query}} для произнесённого текста и {{session_id}} для идентификатора сеанса.</string>
+    <string name="custom_json_template_label">Шаблон JSON</string>
+    <string name="connection_failed_title">Ошибка подключения</string>
     <string name="auth_token_label">Токен аутентификации (необязательно)</string>
     <string name="auth_token_hint">Необязательно</string>
     <string name="session_id_label">Идентификатор сеанса</string>

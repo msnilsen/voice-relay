@@ -35,6 +35,10 @@
     <string name="settings_title">設定</string>
     <string name="webhook_url_label">サーバーURL</string>
     <string name="webhook_url_hint">https://your-server</string>
+    <string name="request_format_custom">カスタム</string>
+    <string name="request_format_custom_desc">独自のJSONボディを定義します。話し言葉は{{query}}、セッションIDは{{session_id}}を使用してください。</string>
+    <string name="custom_json_template_label">JSONテンプレート</string>
+    <string name="connection_failed_title">接続に失敗しました</string>
     <string name="auth_token_label">認証トークン（任意）</string>
     <string name="auth_token_hint">任意</string>
     <string name="session_id_label">セッションID</string>

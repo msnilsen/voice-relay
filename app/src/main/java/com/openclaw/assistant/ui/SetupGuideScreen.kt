@@ -58,6 +58,7 @@ fun SetupGuideScreen(
     var webhookUrl by rememberSaveable { mutableStateOf(settings.httpUrl) }
     var authToken by rememberSaveable { mutableStateOf(settings.authToken) }
     var requestFormat by rememberSaveable { mutableStateOf(settings.requestFormat) }
+    var customJsonTemplate by rememberSaveable { mutableStateOf(settings.customJsonTemplate) }
 
     val totalSteps = SetupStep.entries.size
 
@@ -107,13 +108,16 @@ fun SetupGuideScreen(
                     webhookUrl = webhookUrl,
                     authToken = authToken,
                     requestFormat = requestFormat,
+                    customJsonTemplate = customJsonTemplate,
                     onWebhookUrlChange = { webhookUrl = it },
                     onAuthTokenChange = { authToken = it },
                     onRequestFormatChange = { requestFormat = it },
+                    onCustomJsonTemplateChange = { customJsonTemplate = it },
                     onNext = {
                         settings.httpUrl = webhookUrl.trim()
                         settings.authToken = authToken.trim()
                         settings.requestFormat = requestFormat
+                        settings.customJsonTemplate = customJsonTemplate
                         currentStep = SetupStep.Permissions
                     }
                 )
@@ -192,9 +196,11 @@ private fun ConnectionStep(
     webhookUrl: String,
     authToken: String,
     requestFormat: String,
+    customJsonTemplate: String,
     onWebhookUrlChange: (String) -> Unit,
     onAuthTokenChange: (String) -> Unit,
     onRequestFormatChange: (String) -> Unit,
+    onCustomJsonTemplateChange: (String) -> Unit,
     onNext: () -> Unit
 ) {
     Column {
@@ -234,30 +240,54 @@ private fun ConnectionStep(
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        val isSimple = requestFormat == SettingsRepository.REQUEST_FORMAT_SIMPLE
-
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
-                selected = isSimple,
+                selected = requestFormat == SettingsRepository.REQUEST_FORMAT_SIMPLE,
                 onClick = { onRequestFormatChange(SettingsRepository.REQUEST_FORMAT_SIMPLE) },
                 label = { Text(stringResource(R.string.request_format_simple)) },
                 modifier = Modifier.weight(1f)
             )
             FilterChip(
-                selected = !isSimple,
+                selected = requestFormat == SettingsRepository.REQUEST_FORMAT_OPENAI,
                 onClick = { onRequestFormatChange(SettingsRepository.REQUEST_FORMAT_OPENAI) },
                 label = { Text(stringResource(R.string.request_format_openai)) },
+                modifier = Modifier.weight(1f)
+            )
+            FilterChip(
+                selected = requestFormat == SettingsRepository.REQUEST_FORMAT_CUSTOM,
+                onClick = { onRequestFormatChange(SettingsRepository.REQUEST_FORMAT_CUSTOM) },
+                label = { Text(stringResource(R.string.request_format_custom)) },
                 modifier = Modifier.weight(1f)
             )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = if (isSimple) stringResource(R.string.request_format_simple_desc)
-                   else stringResource(R.string.request_format_openai_desc),
+            text = when (requestFormat) {
+                SettingsRepository.REQUEST_FORMAT_OPENAI -> stringResource(R.string.request_format_openai_desc)
+                SettingsRepository.REQUEST_FORMAT_CUSTOM -> stringResource(R.string.request_format_custom_desc)
+                else -> stringResource(R.string.request_format_simple_desc)
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        if (requestFormat == SettingsRepository.REQUEST_FORMAT_CUSTOM) {
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = customJsonTemplate,
+                onValueChange = onCustomJsonTemplateChange,
+                label = { Text(stringResource(R.string.custom_json_template_label)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 120.dp),
+                shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                ),
+                maxLines = 10
+            )
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -390,7 +420,12 @@ private fun FinalCheckStep(
     onFinish: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val apiClient = remember { WebhookClient(ignoreSslErrors = settings.httpIgnoreSslErrors) }
+    val apiClient = remember {
+        WebhookClient(
+            ignoreSslErrors = settings.httpIgnoreSslErrors,
+            customJsonTemplate = settings.customJsonTemplate
+        )
+    }
     var testStatus by remember { mutableStateOf<TestStatus>(TestStatus.Idle) }
     var isFinishing by remember { mutableStateOf(false) }
 
@@ -455,9 +490,27 @@ private fun FinalCheckStep(
             is TestStatus.Failed -> {
                 StatusIndicator(
                     state = ConnectionState.Disconnected,
-                    label = (testStatus as TestStatus.Failed).message,
-                    modifier = Modifier.padding(16.dp)
+                    label = stringResource(R.string.connection_failed_title),
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 120.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = (testStatus as TestStatus.Failed).message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier
+                            .verticalScroll(rememberScrollState())
+                            .padding(12.dp)
+                    )
+                }
             }
         }
 

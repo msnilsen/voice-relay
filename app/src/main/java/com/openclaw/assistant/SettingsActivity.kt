@@ -261,7 +261,12 @@ fun SettingsScreen(
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val apiClient = remember(httpIgnoreSslErrors) { WebhookClient(ignoreSslErrors = httpIgnoreSslErrors) }
+    val apiClient = remember(httpIgnoreSslErrors) {
+        WebhookClient(
+            ignoreSslErrors = httpIgnoreSslErrors,
+            customJsonTemplate = settings.customJsonTemplate
+        )
+    }
     
     var isTesting by rememberSaveable { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<TestResult?>(null) }
@@ -295,6 +300,8 @@ fun SettingsScreen(
     // HTTP inputs
     var httpInputUrl by rememberSaveable { mutableStateOf(httpUrl) }
     var httpToken by rememberSaveable { mutableStateOf(authToken) }
+    var currentRequestFormat by rememberSaveable { mutableStateOf(settings.requestFormat) }
+    var currentCustomJsonTemplate by rememberSaveable { mutableStateOf(settings.customJsonTemplate) }
 
     LaunchedEffect(httpUrl, authToken) {
         httpInputUrl = httpUrl
@@ -503,6 +510,79 @@ fun SettingsScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
+                            // Request Format
+                            Text(
+                                text = stringResource(R.string.request_format_label),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = currentRequestFormat == SettingsRepository.REQUEST_FORMAT_SIMPLE,
+                                    onClick = {
+                                        currentRequestFormat = SettingsRepository.REQUEST_FORMAT_SIMPLE
+                                        settings.requestFormat = currentRequestFormat
+                                        testResult = null
+                                    },
+                                    label = { Text(stringResource(R.string.request_format_simple)) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FilterChip(
+                                    selected = currentRequestFormat == SettingsRepository.REQUEST_FORMAT_OPENAI,
+                                    onClick = {
+                                        currentRequestFormat = SettingsRepository.REQUEST_FORMAT_OPENAI
+                                        settings.requestFormat = currentRequestFormat
+                                        testResult = null
+                                    },
+                                    label = { Text(stringResource(R.string.request_format_openai)) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FilterChip(
+                                    selected = currentRequestFormat == SettingsRepository.REQUEST_FORMAT_CUSTOM,
+                                    onClick = {
+                                        currentRequestFormat = SettingsRepository.REQUEST_FORMAT_CUSTOM
+                                        settings.requestFormat = currentRequestFormat
+                                        testResult = null
+                                    },
+                                    label = { Text(stringResource(R.string.request_format_custom)) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Text(
+                                text = when (currentRequestFormat) {
+                                    SettingsRepository.REQUEST_FORMAT_OPENAI -> stringResource(R.string.request_format_openai_desc)
+                                    SettingsRepository.REQUEST_FORMAT_CUSTOM -> stringResource(R.string.request_format_custom_desc)
+                                    else -> stringResource(R.string.request_format_simple_desc)
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+
+                            if (currentRequestFormat == SettingsRepository.REQUEST_FORMAT_CUSTOM) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = currentCustomJsonTemplate,
+                                    onValueChange = {
+                                        currentCustomJsonTemplate = it
+                                        settings.customJsonTemplate = it
+                                        testResult = null
+                                    },
+                                    label = { Text(stringResource(R.string.custom_json_template_label)) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 120.dp),
+                                    textStyle = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                    ),
+                                    maxLines = 10
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
                             // Test Connection Button
                             Button(
                                 onClick = {
@@ -512,7 +592,7 @@ fun SettingsScreen(
                                             isTesting = true
                                             testResult = null
                                             val testUrl = httpInputUrl.trim().trimEnd('/')
-                                            val format = RequestFormat.fromString(settings.requestFormat)
+                                            val format = RequestFormat.fromString(currentRequestFormat)
                                             val result = apiClient.testConnection(testUrl, httpToken.trim(), format)
                                             result.fold(
                                                 onSuccess = {
@@ -561,7 +641,34 @@ fun SettingsScreen(
                                         contentDescription = null
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(testResult?.message ?: stringResource(R.string.test_connection_button))
+                                    Text(
+                                        when {
+                                            testResult?.success == true -> testResult?.message ?: stringResource(R.string.connected)
+                                            else -> stringResource(R.string.test_connection_button)
+                                        }
+                                    )
+                                }
+                            }
+
+                            if (testResult?.success == false && testResult?.message != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 100.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
+                                    ),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = testResult?.message ?: "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier
+                                            .verticalScroll(rememberScrollState())
+                                            .padding(12.dp)
+                                    )
                                 }
                             }
 

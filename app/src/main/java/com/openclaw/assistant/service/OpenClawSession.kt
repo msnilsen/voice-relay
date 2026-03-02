@@ -72,7 +72,10 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     }
 
     private val settings = SettingsRepository.getInstance(context)
-    private val apiClient = WebhookClient(ignoreSslErrors = settings.httpIgnoreSslErrors)
+    private val apiClient = WebhookClient(
+        ignoreSslErrors = settings.httpIgnoreSslErrors,
+        customJsonTemplate = settings.customJsonTemplate
+    )
     private lateinit var speechManager: SpeechRecognizerManager
     private lateinit var ttsManager: TTSManager
     

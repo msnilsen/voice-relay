@@ -35,6 +35,10 @@
     <string name="settings_title">सेटिंग्स</string>
     <string name="webhook_url_label">सर्वर यूआरएल</string>
     <string name="webhook_url_hint">https://आपका-सर्वर</string>
+    <string name="request_format_custom">कस्टम</string>
+    <string name="request_format_custom_desc">अपना स्वयं का JSON बॉडी परिभाषित करें। बोले गए टेक्स्ट के लिए {{query}} और सत्र पहचानकर्ता के लिए {{session_id}} का उपयोग करें।</string>
+    <string name="custom_json_template_label">JSON टेम्पलेट</string>
+    <string name="connection_failed_title">कनेक्शन विफल</string>
     <string name="auth_token_label">प्रामाणिक टोकन (वैकल्पिक)</string>
     <string name="auth_token_hint">वैकल्पिक</string>
     <string name="session_id_label">सत्र आईडी</string>

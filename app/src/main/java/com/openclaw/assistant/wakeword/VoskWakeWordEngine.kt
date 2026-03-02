@@ -35,6 +35,8 @@ class VoskWakeWordEngine(
     private var audioRetryCount = 0
     private val MAX_AUDIO_RETRIES = 5
     private var retryJob: Job? = null
+    private var lastDetectionTime = 0L
+    private val DETECTION_DEBOUNCE_MS = 1500L
 
     override fun isAvailable(): Boolean {
         val prefs = context.getSharedPreferences("hotword_prefs", Context.MODE_PRIVATE)
@@ -128,7 +130,7 @@ class VoskWakeWordEngine(
 
         try {
             val wakeWords = settings.getWakeWords()
-            val wakeWordsJson = wakeWords.joinToString("\", \"", "[\"", "\"]")
+            val wakeWordsJson = (wakeWords + "[unk]").joinToString("\", \"", "[\"", "\"]")
             val rec = Recognizer(model, SAMPLE_RATE, wakeWordsJson)
             speechService = SpeechService(rec, SAMPLE_RATE)
             speechService?.startListening(this)
@@ -155,18 +157,22 @@ class VoskWakeWordEngine(
     override fun onPartialResult(hypothesis: String?) {}
 
     override fun onResult(hypothesis: String?) {
-        hypothesis?.let {
-            try {
-                val json = JSONObject(it)
-                val text = json.optString("text", "")
-                val wakeWords = settings.getWakeWords()
-                if (wakeWords.any { w -> text.contains(w) }) {
-                    Log.d(TAG, "Wake word detected: $text")
-                    onDetectedCallback?.invoke()
-                } else Unit
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to parse result: $it", e)
+        hypothesis ?: return
+        try {
+            val json = JSONObject(hypothesis)
+            val text = json.optString("text", "").trim()
+            if (text.isEmpty() || text == "[unk]") return
+
+            val wakeWords = settings.getWakeWords()
+            if (wakeWords.any { w -> text.contains(w) }) {
+                val now = System.currentTimeMillis()
+                if (now - lastDetectionTime < DETECTION_DEBOUNCE_MS) return
+                lastDetectionTime = now
+                Log.d(TAG, "Wake word detected: $text")
+                onDetectedCallback?.invoke()
             }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse result: $hypothesis", e)
         }
     }
 

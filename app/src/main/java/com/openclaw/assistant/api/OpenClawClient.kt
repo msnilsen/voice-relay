@@ -18,11 +18,13 @@ import javax.net.ssl.X509TrustManager
 
 enum class RequestFormat {
     SIMPLE,
-    OPENAI;
+    OPENAI,
+    CUSTOM;
 
     companion object {
         fun fromString(s: String): RequestFormat = when (s.lowercase()) {
             "openai" -> OPENAI
+            "custom" -> CUSTOM
             else -> SIMPLE
         }
     }
@@ -30,15 +32,15 @@ enum class RequestFormat {
 
 /**
  * HTTP client that POSTs voice commands to a configured webhook endpoint.
- * Supports two request formats:
+ * Supports three request formats:
  *   SIMPLE  - {"query": "...", "session_id": "..."}
  *   OPENAI  - OpenAI Chat Completions format
+ *   CUSTOM  - User-defined JSON template with {{query}} and {{session_id}} placeholders
  */
-class WebhookClient(private val ignoreSslErrors: Boolean = false) {
-
-    companion object {
-        private const val TAG = "WebhookClient"
-    }
+class WebhookClient(
+    private val ignoreSslErrors: Boolean = false,
+    private val customJsonTemplate: String? = null
+) {
 
     private val client: OkHttpClient = run {
         val builder = OkHttpClient.Builder()
@@ -61,7 +63,12 @@ class WebhookClient(private val ignoreSslErrors: Boolean = false) {
 
     private val gson = Gson()
 
-    private fun buildRequestBody(message: String, sessionId: String, format: RequestFormat): JsonObject {
+    private fun buildRequestBody(
+        message: String,
+        sessionId: String,
+        format: RequestFormat,
+        customTemplate: String? = null
+    ): JsonObject {
         return when (format) {
             RequestFormat.SIMPLE -> JsonObject().apply {
                 addProperty("query", message)
@@ -78,7 +85,27 @@ class WebhookClient(private val ignoreSslErrors: Boolean = false) {
                 messagesArray.add(userMessage)
                 add("messages", messagesArray)
             }
+            RequestFormat.CUSTOM -> {
+                val template = customTemplate ?: DEFAULT_CUSTOM_TEMPLATE
+                val filled = template
+                    .replace("{{query}}", gson.toJson(message).let { it.substring(1, it.length - 1) })
+                    .replace("{{session_id}}", gson.toJson(sessionId).let { it.substring(1, it.length - 1) })
+                try {
+                    gson.fromJson(filled, JsonObject::class.java)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Invalid custom JSON template, falling back to SIMPLE", e)
+                    JsonObject().apply {
+                        addProperty("query", message)
+                        addProperty("session_id", sessionId)
+                    }
+                }
+            }
         }
+    }
+
+    companion object {
+        private const val TAG = "WebhookClient"
+        const val DEFAULT_CUSTOM_TEMPLATE = """{"query": "{{query}}", "session_id": "{{session_id}}"}"""
     }
 
     suspend fun sendMessage(
@@ -96,7 +123,7 @@ class WebhookClient(private val ignoreSslErrors: Boolean = false) {
         }
 
         try {
-            val requestBody = buildRequestBody(message, sessionId, format)
+            val requestBody = buildRequestBody(message, sessionId, format, customJsonTemplate)
 
             val jsonBody = gson.toJson(requestBody)
                 .toRequestBody("application/json; charset=utf-8".toMediaType())
@@ -155,35 +182,11 @@ class WebhookClient(private val ignoreSslErrors: Boolean = false) {
         }
 
         try {
-            var requestBuilder = Request.Builder()
-                .url(httpUrl)
-                .head()
-
-            if (!authToken.isNullOrBlank()) {
-                requestBuilder.addHeader("Authorization", "Bearer ${authToken.trim()}")
-            }
-
-            var request = requestBuilder.build()
-
-            try {
-                client.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) return@withContext Result.success(true)
-                    if (response.code == 405) {
-                        // Fallthrough to POST
-                    } else {
-                        return@withContext Result.failure(IOException("HTTP ${response.code}"))
-                    }
-                }
-            } catch (e: Exception) {
-                // Fallthrough to POST
-            }
-
-            val requestBody = buildRequestBody("ping", "connection-test", format)
-
+            val requestBody = buildRequestBody("ping", "connection-test", format, customJsonTemplate)
             val jsonBody = gson.toJson(requestBody)
                 .toRequestBody("application/json; charset=utf-8".toMediaType())
 
-            requestBuilder = Request.Builder()
+            val requestBuilder = Request.Builder()
                 .url(httpUrl)
                 .post(jsonBody)
                 .addHeader("Content-Type", "application/json")
@@ -192,9 +195,7 @@ class WebhookClient(private val ignoreSslErrors: Boolean = false) {
                 requestBuilder.addHeader("Authorization", "Bearer ${authToken.trim()}")
             }
 
-            request = requestBuilder.build()
-
-            client.newCall(request).execute().use { response ->
+            client.newCall(requestBuilder.build()).execute().use { response ->
                 if (response.isSuccessful) {
                     Result.success(true)
                 } else {

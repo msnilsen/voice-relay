@@ -222,11 +222,16 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_CONNECTION_TYPE, CONNECTION_TYPE_HTTP) ?: CONNECTION_TYPE_HTTP
         set(value) = prefs.edit().putString(KEY_CONNECTION_TYPE, value).apply()
 
-    // Request format: "simple" sends {"query":"...", "session_id":"..."}
-    //                 "openai" sends OpenAI Chat Completions format
+    // Request format: "simple", "openai", or "custom"
     var requestFormat: String
         get() = prefs.getString(KEY_REQUEST_FORMAT, REQUEST_FORMAT_SIMPLE) ?: REQUEST_FORMAT_SIMPLE
         set(value) = prefs.edit().putString(KEY_REQUEST_FORMAT, value).apply()
+
+    // Custom JSON template for the CUSTOM request format.
+    // Use {{query}} and {{session_id}} as placeholders.
+    var customJsonTemplate: String
+        get() = prefs.getString(KEY_CUSTOM_JSON_TEMPLATE, DEFAULT_CUSTOM_JSON_TEMPLATE) ?: DEFAULT_CUSTOM_JSON_TEMPLATE
+        set(value) = prefs.edit().putString(KEY_CUSTOM_JSON_TEMPLATE, value).apply()
 
     // Ignore SSL certificate errors for HTTPS connections (for self-signed certs)
     var httpIgnoreSslErrors: Boolean
@@ -296,6 +301,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_USE_NODE_CHAT = "use_node_chat"
         private const val KEY_CONNECTION_TYPE = "connection_type"
         private const val KEY_REQUEST_FORMAT = "request_format"
+        private const val KEY_CUSTOM_JSON_TEMPLATE = "custom_json_template"
         private const val KEY_HTTP_IGNORE_SSL_ERRORS = "http_ignore_ssl_errors"
         private const val KEY_WAKEWORD_CONNECTION_TYPE = "wakeword_connection_type"
         private const val KEY_SPEECH_SILENCE_TIMEOUT = "speech_silence_timeout"
@@ -329,6 +335,8 @@ class SettingsRepository(context: Context) {
 
         const val REQUEST_FORMAT_SIMPLE = "simple"
         const val REQUEST_FORMAT_OPENAI = "openai"
+        const val REQUEST_FORMAT_CUSTOM = "custom"
+        const val DEFAULT_CUSTOM_JSON_TEMPLATE = """{"query": "{{query}}", "session_id": "{{session_id}}"}"""
         
         const val GOOGLE_TTS_PACKAGE = "com.google.android.tts"
         

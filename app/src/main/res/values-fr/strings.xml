@@ -35,6 +35,10 @@
     <string name="settings_title">Paramètres</string>
     <string name="webhook_url_label">URL du serveur</string>
     <string name="webhook_url_hint">https://votre-serveur</string>
+    <string name="request_format_custom">Personnalisé</string>
+    <string name="request_format_custom_desc">Définissez votre propre corps JSON. Utilisez {{query}} pour le texte parlé et {{session_id}} pour l\'identifiant de session.</string>
+    <string name="custom_json_template_label">Modèle JSON</string>
+    <string name="connection_failed_title">Échec de la connexion</string>
     <string name="auth_token_label">Jeton d\'authentification (facultatif)</string>
     <string name="auth_token_hint">Facultatif</string>
     <string name="session_id_label">ID de session</string>

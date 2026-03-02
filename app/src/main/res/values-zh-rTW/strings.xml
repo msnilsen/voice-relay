@@ -35,6 +35,10 @@
     <string name="settings_title">設定</string>
     <string name="webhook_url_label">伺服器位址</string>
     <string name="webhook_url_hint">https://您的伺服器</string>
+    <string name="request_format_custom">自訂</string>
+    <string name="request_format_custom_desc">定義您自己的 JSON 主體。在口語文字位置使用 {{query}}，在會話識別碼位置使用 {{session_id}}。</string>
+    <string name="custom_json_template_label">JSON 範本</string>
+    <string name="connection_failed_title">連線失敗</string>
     <string name="auth_token_label">身份驗證令牌（可選）</string>
     <string name="auth_token_hint">選修的</string>
     <string name="session_id_label">會話ID</string>

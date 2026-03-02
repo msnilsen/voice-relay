@@ -35,6 +35,10 @@
     <string name="settings_title">设置</string>
     <string name="webhook_url_label">服务器 URL</string>
     <string name="webhook_url_hint">https://您的服务器</string>
+    <string name="request_format_custom">自定义</string>
+    <string name="request_format_custom_desc">定义您自己的 JSON 正文。在口语文本位置使用 {{query}}，在会话标识符位置使用 {{session_id}}。</string>
+    <string name="custom_json_template_label">JSON 模板</string>
+    <string name="connection_failed_title">连接失败</string>
     <string name="auth_token_label">身份验证令牌（可选）</string>
     <string name="auth_token_hint">可选</string>
     <string name="session_id_label">会话 ID</string>
