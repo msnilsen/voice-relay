@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "OpenClawAssistant"
+rootProject.name = "VoiceRelay"
 include(":app")

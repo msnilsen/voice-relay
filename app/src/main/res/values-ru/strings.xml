@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OpenClaw Assistant</string>
+    <string name="app_name">Voice Relay</string>
     <string name="notification_channel_name">Служба Wake Word</string>
     <string name="notification_channel_description">Постоянная служба распознавания голоса</string>
-    <string name="notification_title">OpenClaw Assistant</string>
+    <string name="notification_title">Voice Relay</string>
     <string name="notification_content">Скажите «%s», чтобы активировать</string>
     <string name="default_session_title_format">Голосовая сессия %s</string>
     <string name="chat_session_title_format">Чат %s</string>
@@ -47,7 +47,7 @@
     <string name="processing">Обработка…</string>
     <string name="error_label">Ошибка</string>
     <string name="try_again_button">Попробуйте еще раз</string>
-    <string name="ask_hint">Спросите OpenClaw…</string>
+    <string name="ask_hint">Спросите что угодно…</string>
     <string name="send_description">Отправить</string>
     <string name="stop_description">Стоп</string>
     <string name="listening">Слушаю…</string>
@@ -67,7 +67,6 @@
     <string name="disabled">Отключено</string>
     <string name="open_chat">Открытый чат</string>
     <string name="setup_required">Требуется установка</string>
-    <string name="connected_to_openclaw">Подключено к OpenClaw</string>
     <string name="permissions_required">Требуются разрешения</string>
     <string name="could_not_open_settings">Не удалось открыть настройки</string>
     <string name="hotword_started">Обнаружение пробуждаемого слова начато</string>
@@ -78,7 +77,7 @@
     <string name="got_it">Понятно</string>
     <string name="step_1">Длительное нажатие «Домой» или произнесите «%s»</string>
     <string name="step_2">Задайте свой вопрос или запрос</string>
-    <string name="step_3">OpenClaw зачитывает ответ вслух</string>
+    <string name="step_3">Приложение зачитывает ответ вслух</string>
     <string name="step_4">Продолжить разговор (сессия сохраняется)</string>
     <string name="assist_gesture_not_working">Вспомогательный жест не работает?</string>
     <string name="troubleshooting_intro">Даже если они установлены по умолчанию, некоторые системные функции могут переопределять жест длительного нажатия.</string>
@@ -89,7 +88,7 @@
     <string name="google_app_setting_title">Настройка приложения Google</string>
     <string name="google_app_setting_desc">Откройте приложение Google → нажмите «Профиль» → «Настройки» → «Google Ассистент» → «Основные» → выключите «Google Ассистент», если он все еще мешает.</string>
     <string name="refresh_binding_title">Обновить привязку</string>
-    <string name="refresh_binding_desc">Если статус «Активный», но он по-прежнему не работает, попробуйте изменить «Приложение цифрового помощника» на «Нет», а затем вернуться к «OpenClaw Assistant».</string>
+    <string name="refresh_binding_desc">Если статус «Активный», но он по-прежнему не работает, попробуйте изменить «Приложение цифрового помощника» на «Нет», а затем вернуться к «Voice Relay».</string>
     <string name="debug_force_start">Отладка: Принудительный запуск сеанса</string>
     <string name="connection">Связь</string>
     <string name="voice">Голос</string>
@@ -177,7 +176,7 @@
     <string name="connected">Подключено!</string>
     <string name="failed">Ошибка: %s</string>
     <string name="error">Ошибка: %s</string>
-    <string name="wake_word_openclaw">OpenClaw</string>
+    <string name="wake_word_openclaw">Open Claw</string>
     <string name="wake_word_hey_assistant">Привет, помощник</string>
     <string name="wake_word_jarvis">Джарвис</string>
     <string name="wake_word_computer">Компьютер</string>
@@ -254,7 +253,7 @@
     <string name="support_section">Поддержка</string>
     <string name="report_issue">Сообщить о проблеме</string>
     <string name="report_issue_desc">Нашли ошибку или у вас есть пожелания по добавлению функции? Дайте нам знать на GitHub.</string>
-    <string name="permissions_for_openclaw_title">Разрешения для OpenClaw</string>
+    <string name="permissions_for_openclaw_title">Разрешения приложения</string>
     <string name="capabilities_title">Возможности</string>
     <string name="capability_talk">Обсуждение</string>
     <string name="diagnostics_title">Диагностика</string>
@@ -281,8 +280,8 @@
     <string name="wake_word_classic_title">Vosk</string>
     <string name="wake_word_engine_vosk">Vosk (локальный)</string>
     <string name="wake_words_label">Слова пробуждения</string>
-    <string name="wake_words_placeholder">openclaw, claude</string>
-    <string name="wake_words_help">Слова, разделенные запятыми, которые активируют помощника (например, "openclaw, claude")</string>
+    <string name="wake_words_placeholder">jarvis, hey assistant</string>
+    <string name="wake_words_help">Слова, разделенные запятыми, которые активируют помощника (например, "jarvis, hey assistant")</string>
     <string name="connection_settings">Настройки подключения</string>
     <string name="tab_http">HTTP</string>
     <string name="http_api_configuration">Конфигурация HTTP API</string>
@@ -304,7 +303,7 @@
     <string name="up_to_date">Приложение обновлено</string>
     <string name="update_action">Обновление</string>
     <string name="setup_guide_first_run">ПЕРВЫЙ ЗАПУСК</string>
-    <string name="setup_guide_title">OpenClaw Assistant\nМобильная настройка</string>
+    <string name="setup_guide_title">Voice Relay\nНастройка</string>
     <string name="setup_guide_step_format">Шаг %1$d из %2$d</string>
     <string name="setup_guide_welcome_title">Что вы получаете</string>
     <string name="setup_guide_welcome_bullet_2">Подключитесь с помощью кода настройки и восстановите сопряжение с помощью команд CLI.</string>
@@ -321,7 +320,7 @@
     <string name="setup_guide_manual_token">ТОКЕН (НЕОБЯЗАТЕЛЬНО)</string>
     <string name="setup_guide_manual_password">ПАРОЛЬ (НЕОБЯЗАТЕЛЬНО)</string>
     <string name="setup_guide_permissions_title">Разрешения</string>
-    <string name="setup_guide_permissions_desc">Предоставьте разрешения на включение функций OpenClaw.</string>
+    <string name="setup_guide_permissions_desc">Предоставьте разрешения на включение голосовых функций.</string>
     <string name="setup_guide_final_check_title">Финальная проверка</string>
     <string name="setup_guide_final_check_desc">Проверьте соединение и настройки.</string>
     <string name="setup_guide_finish">Готово</string>

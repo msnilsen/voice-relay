@@ -42,7 +42,7 @@ import com.openclaw.assistant.api.WebhookClient
 import com.openclaw.assistant.data.SettingsRepository
 import com.openclaw.assistant.service.HotwordService
 import com.openclaw.assistant.ui.components.CollapsibleSection
-import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
+import com.openclaw.assistant.ui.theme.VoiceRelayTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.openclaw.assistant.utils.SystemInfoProvider
 import kotlinx.coroutines.delay
@@ -205,7 +205,7 @@ class SettingsActivity : ComponentActivity() {
         settings = SettingsRepository.getInstance(this)
 
         setContent {
-            OpenClawAssistantTheme {
+            VoiceRelayTheme {
                 var showCredits by remember { mutableStateOf(false) }
                 if (showCredits) {
                     com.openclaw.assistant.ui.settings.CreditsScreen(
@@ -335,9 +335,8 @@ fun SettingsScreen(
 
     // Wake word options
     val wakeWordOptions = listOf(
-        SettingsRepository.WAKE_WORD_OPEN_CLAW to stringResource(R.string.wake_word_openclaw),
-        SettingsRepository.WAKE_WORD_HEY_ASSISTANT to stringResource(R.string.wake_word_hey_assistant),
         SettingsRepository.WAKE_WORD_JARVIS to stringResource(R.string.wake_word_jarvis),
+        SettingsRepository.WAKE_WORD_HEY_ASSISTANT to stringResource(R.string.wake_word_hey_assistant),
         SettingsRepository.WAKE_WORD_COMPUTER to stringResource(R.string.wake_word_computer),
         SettingsRepository.WAKE_WORD_CUSTOM to stringResource(R.string.wake_word_custom)
     )
@@ -911,7 +910,7 @@ fun SettingsScreen(
                                 onExpandedChange = { showWakeWordMenu = it }
                             ) {
                                 OutlinedTextField(
-                                    value = wakeWordOptions.find { it.first == wakeWordPreset }?.second ?: stringResource(R.string.wake_word_openclaw),
+                                    value = wakeWordOptions.find { it.first == wakeWordPreset }?.second ?: stringResource(R.string.wake_word_jarvis),
                                     onValueChange = {},
                                     readOnly = true,
                                     label = { Text(stringResource(R.string.activation_phrase)) },
@@ -1220,7 +1219,7 @@ fun SettingsScreen(
                         onClick = {
                             val systemInfo = SystemInfoProvider.getSystemInfoReport(context, settings, null)
                             val body = "\n\n$systemInfo"
-                            val uri = Uri.parse("https://github.com/yuga-hashimoto/openclaw-assistant/issues/new")
+                            val uri = Uri.parse("https://github.com/msnilsen/voice-relay/issues/new")
                                 .buildUpon()
                                 .appendQueryParameter("body", body)
                                 .build()

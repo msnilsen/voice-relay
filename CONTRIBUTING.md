@@ -1,8 +1,8 @@
-# Contributing to OpenClaw Assistant
+# Contributing to Voice Relay
 
-First off, thanks for taking the time to contribute! 🎉
+First off, thanks for taking the time to contribute!
 
-The following is a set of guidelines for contributing to OpenClaw Assistant. These are mostly guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request.
+The following is a set of guidelines for contributing to Voice Relay. These are mostly guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request.
 
 ## Code of Conduct
 
@@ -12,7 +12,7 @@ This project and everyone participating in it is governed by the [Code of Conduc
 
 ### Reporting Bugs
 
-This section guides you through submitting a bug report for OpenClaw Assistant. Following these guidelines helps maintainers and the community understand your report, reproduce the behavior, and find related reports.
+This section guides you through submitting a bug report for Voice Relay. Following these guidelines helps maintainers and the community understand your report, reproduce the behavior, and find related reports.
 
 - **Use a clear and descriptive title** for the issue to identify the problem.
 - **Describe the exact steps to reproduce the problem** in as many details as possible.
@@ -20,19 +20,19 @@ This section guides you through submitting a bug report for OpenClaw Assistant. 
 
 ### Suggesting Enhancements
 
-This section guides you through submitting an enhancement suggestion for OpenClaw Assistant, including completely new features and minor improvements to existing functionality.
+This section guides you through submitting an enhancement suggestion for Voice Relay, including completely new features and minor improvements to existing functionality.
 
 - **Use a clear and descriptive title** for the issue to identify the suggestion.
 - **Provide a step-by-step description of the suggested enhancement** in as many details as possible.
-- **Explain why this enhancement would be useful** to most OpenClaw Assistant users.
+- **Explain why this enhancement would be useful** to most Voice Relay users.
 
 ### Pull Requests
 
 The process described here has several goals:
 
-- Maintain OpenClaw Assistant's quality
+- Maintain Voice Relay's quality
 - Fix problems that are important to users
-- Engage the community in working toward the best possible OpenClaw Assistant
+- Engage the community in working toward the best possible Voice Relay
 
 Please follow these steps to have your contribution considered by the maintainers:
 

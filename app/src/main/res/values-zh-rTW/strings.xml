@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">開爪助手</string>
+    <string name="app_name">Voice Relay</string>
     <string name="notification_channel_name">喚醒詞服務</string>
     <string name="notification_channel_description">始終在線的語音檢測服務</string>
-    <string name="notification_title">開爪助手</string>
+    <string name="notification_title">Voice Relay</string>
     <string name="notification_content">說「%s」即可激活</string>
     <string name="default_session_title_format">語音會話 %s</string>
     <string name="chat_session_title_format">聊天 %s</string>
@@ -47,7 +47,7 @@
     <string name="processing">加工…</string>
     <string name="error_label">錯誤</string>
     <string name="try_again_button">再試一次</string>
-    <string name="ask_hint">詢問 OpenClaw...</string>
+    <string name="ask_hint">問任何問題...</string>
     <string name="send_description">傳送</string>
     <string name="stop_description">停止</string>
     <string name="listening">正在聽…</string>
@@ -67,7 +67,6 @@
     <string name="disabled">殘障人士</string>
     <string name="open_chat">打開聊天</string>
     <string name="setup_required">需要設定</string>
-    <string name="connected_to_openclaw">連線到 OpenClaw</string>
     <string name="permissions_required">所需權限</string>
     <string name="could_not_open_settings">無法開啟設定</string>
     <string name="hotword_started">喚醒單字偵測開始</string>
@@ -78,7 +77,7 @@
     <string name="got_it">知道了</string>
     <string name="step_1">長按 Home 或說“%s”</string>
     <string name="step_2">提出您的問題或要求</string>
-    <string name="step_3">OpenClaw 大聲讀出回應</string>
+    <string name="step_3">應用程式大聲讀出回應</string>
     <string name="step_4">繼續對話（會話保持）</string>
     <string name="assist_gesture_not_working">輔助手勢不起作用？</string>
     <string name="troubleshooting_intro">即使設定為預設值，某些系統功能也可能會覆蓋長按手勢。</string>
@@ -89,7 +88,7 @@
     <string name="google_app_setting_title">谷歌應用程式設定</string>
     <string name="google_app_setting_desc">開啟 Google 應用程式 → 點擊個人資料 → 設定 → Google Assistant → 常規 → 如果「Google Assistant」仍然有乾擾，請關閉它。</string>
     <string name="refresh_binding_title">刷新綁定</string>
-    <string name="refresh_binding_desc">如果狀態為“活動”但仍然無法運作，請嘗試將“數位助理應用程式”變更為“無”，然後返回“OpenClaw Assistant”。</string>
+    <string name="refresh_binding_desc">如果狀態為“活動”但仍然無法運作，請嘗試將“數位助理應用程式”變更為“無”，然後返回“Voice Relay”。</string>
     <string name="debug_force_start">調試：強制啟動會話</string>
     <string name="connection">聯繫</string>
     <string name="voice">嗓音</string>
@@ -176,7 +175,7 @@
     <string name="connected">已連線！</string>
     <string name="failed">失敗：%s</string>
     <string name="error">錯誤：%s</string>
-    <string name="wake_word_openclaw">開爪</string>
+    <string name="wake_word_openclaw">Open Claw</string>
     <string name="wake_word_hey_assistant">嘿助理</string>
     <string name="wake_word_jarvis">賈維斯</string>
     <string name="wake_word_computer">電腦</string>
@@ -253,7 +252,7 @@
     <string name="support_section">支援</string>
     <string name="report_issue">報告問題</string>
     <string name="report_issue_desc">發現錯誤或有功能請求？請在 GitHub 上告訴我們。</string>
-    <string name="permissions_for_openclaw_title">OpenClaw 的權限</string>
+    <string name="permissions_for_openclaw_title">應用程式權限</string>
     <string name="capabilities_title">能力</string>
     <string name="capability_talk">演講</string>
     <string name="diagnostics_title">診斷</string>
@@ -280,8 +279,8 @@
     <string name="wake_word_classic_title">Vosk</string>
     <string name="wake_word_engine_vosk">沃斯克（本地）</string>
     <string name="wake_words_label">喚醒詞</string>
-    <string name="wake_words_placeholder">openclaw, claude</string>
-    <string name="wake_words_help">激活助手的逗號分隔詞（例如“openclaw, claude”）</string>
+    <string name="wake_words_placeholder">jarvis, hey assistant</string>
+    <string name="wake_words_help">激活助手的逗號分隔詞（例如“jarvis, hey assistant”）</string>
     <string name="connection_settings">連接設定</string>
     <string name="tab_http">HTTP協定</string>
     <string name="http_api_configuration">HTTP API 設定</string>
@@ -303,7 +302,7 @@
     <string name="up_to_date">應用程式是最新的</string>
     <string name="update_action">更新</string>
     <string name="setup_guide_first_run">第一次運行</string>
-    <string name="setup_guide_title">OpenClaw助理\n手機設置</string>
+    <string name="setup_guide_title">Voice Relay\n設定</string>
     <string name="setup_guide_step_format">%2$d 的步驟 %1$d</string>
     <string name="setup_guide_welcome_title">你得到什麼</string>
     <string name="setup_guide_welcome_bullet_2">連接設定代碼並使用 CLI 命令恢復配對。</string>
@@ -320,7 +319,7 @@
     <string name="setup_guide_manual_token">令牌（可選）</string>
     <string name="setup_guide_manual_password">密碼（可選）</string>
     <string name="setup_guide_permissions_title">權限</string>
-    <string name="setup_guide_permissions_desc">授予啟用 OpenClaw 功能的權限。</string>
+    <string name="setup_guide_permissions_desc">授予啟用語音功能的權限。</string>
     <string name="setup_guide_final_check_title">最終檢查</string>
     <string name="setup_guide_final_check_desc">驗證連線和設定。</string>
     <string name="setup_guide_finish">結束</string>

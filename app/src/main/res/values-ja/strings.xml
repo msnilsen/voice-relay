@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OpenClaw Assistant</string>
+    <string name="app_name">Voice Relay</string>
     <string name="notification_channel_name">ホットワードサービス</string>
     <string name="notification_channel_description">常時音声検知サービス</string>
-    <string name="notification_title">OpenClaw Assistant</string>
+    <string name="notification_title">Voice Relay</string>
     <string name="notification_content">「%s」と話しかけてください</string>
     <string name="default_session_title_format">音声セッション %s</string>
     <string name="chat_session_title_format">チャット %s</string>
@@ -47,7 +47,7 @@
     <string name="processing">処理中…</string>
     <string name="error_label">エラー</string>
     <string name="try_again_button">もう一度試す</string>
-    <string name="ask_hint">OpenClawに質問…</string>
+    <string name="ask_hint">何でも聞いて…</string>
     <string name="send_description">送信</string>
     <string name="stop_description">停止</string>
     <string name="listening">聞いています…</string>
@@ -67,7 +67,6 @@
     <string name="disabled">無効</string>
     <string name="open_chat">チャットを開く</string>
     <string name="setup_required">設定が必要</string>
-    <string name="connected_to_openclaw">OpenClawに接続済み</string>
     <string name="permissions_required">権限が必要です</string>
     <string name="could_not_open_settings">設定を開けませんでした</string>
     <string name="hotword_started">ウェイクワード検知を開始しました</string>
@@ -78,7 +77,7 @@
     <string name="got_it">了解</string>
     <string name="step_1">ホームボタン長押し、または「%s」と話しかける</string>
     <string name="step_2">質問やリクエストを話す</string>
-    <string name="step_3">OpenClawが音声で応答</string>
+    <string name="step_3">アプリが音声で応答</string>
     <string name="step_4">会話を続ける（セッション維持）</string>
     <string name="assist_gesture_not_working">アシストジェスチャーが動作しない？</string>
     <string name="troubleshooting_intro">デフォルトに設定しても、一部のシステム機能が長押しジェスチャーを上書きする場合があります。</string>
@@ -89,7 +88,7 @@
     <string name="google_app_setting_title">Googleアプリの設定</string>
     <string name="google_app_setting_desc">Googleアプリを開く → プロフィールをタップ → 設定 → Googleアシスタント → 一般 → 干渉が続く場合は「Googleアシスタント」をオフにする</string>
     <string name="refresh_binding_title">バインドの更新</string>
-    <string name="refresh_binding_desc">ステータスが「有効」なのに動作しない場合、「デジタルアシスタントアプリ」を「なし」に変更してから「OpenClaw Assistant」に戻してみてください。</string>
+    <string name="refresh_binding_desc">ステータスが「有効」なのに動作しない場合、「デジタルアシスタントアプリ」を「なし」に変更してから「Voice Relay」に戻してみてください。</string>
     <string name="debug_force_start">デバッグ: 強制セッション開始</string>
     <string name="connection">接続</string>
     <string name="voice">音声</string>
@@ -176,7 +175,7 @@
     <string name="connected">接続成功！</string>
     <string name="failed">失敗: %s</string>
     <string name="error">エラー: %s</string>
-    <string name="wake_word_openclaw">OpenClaw</string>
+    <string name="wake_word_openclaw">Open Claw</string>
     <string name="wake_word_hey_assistant">Hey Assistant</string>
     <string name="wake_word_jarvis">Jarvis</string>
     <string name="wake_word_computer">Computer</string>
@@ -253,7 +252,7 @@
     <string name="support_section">サポート</string>
     <string name="report_issue">問題を報告</string>
     <string name="report_issue_desc">バグの報告や機能のリクエストはこちらから（GitHub）</string>
-    <string name="permissions_for_openclaw_title">OpenClawに渡す権限</string>
+    <string name="permissions_for_openclaw_title">アプリの権限</string>
     <string name="capabilities_title">デバイス機能</string>
     <string name="capability_talk">会話</string>
     <string name="diagnostics_title">診断</string>
@@ -280,8 +279,8 @@
     <string name="wake_word_classic_title">Vosk</string>
     <string name="wake_word_engine_vosk">Vosk（ローカル）</string>
     <string name="wake_words_label">ウェイクワード</string>
-    <string name="wake_words_placeholder">openclaw, claude</string>
-    <string name="wake_words_help">アシスタントを起動するカンマ区切りの言葉（例: "openclaw, claude"）</string>
+    <string name="wake_words_placeholder">jarvis, hey assistant</string>
+    <string name="wake_words_help">アシスタントを起動するカンマ区切りの言葉（例: "jarvis, hey assistant"）</string>
     <string name="connection_settings">接続設定</string>
     <string name="tab_http">HTTP</string>
     <string name="http_api_configuration">HTTP API設定</string>
@@ -303,7 +302,7 @@
     <string name="up_to_date">最新バージョンです</string>
     <string name="update_action">更新</string>
     <string name="setup_guide_first_run">初回起動</string>
-    <string name="setup_guide_title">OpenClaw Assistant\nセットアップガイド</string>
+    <string name="setup_guide_title">Voice Relay\nセットアップ</string>
     <string name="setup_guide_step_format">ステップ %1$d / %2$d</string>
     <string name="setup_guide_welcome_title">できること</string>
     <string name="setup_guide_welcome_bullet_2">セットアップコードで簡単に接続でき、CLIコマンドでペアリングも可能です。</string>
@@ -320,7 +319,7 @@
     <string name="setup_guide_manual_token">トークン (任意)</string>
     <string name="setup_guide_manual_password">パスワード (任意)</string>
     <string name="setup_guide_permissions_title">権限の設定</string>
-    <string name="setup_guide_permissions_desc">OpenClawの機能を利用するために必要な権限を許可します。</string>
+    <string name="setup_guide_permissions_desc">音声機能を利用するために必要な権限を許可します。</string>
     <string name="setup_guide_final_check_title">最終確認</string>
     <string name="setup_guide_final_check_desc">接続と設定内容を確認します。</string>
     <string name="setup_guide_finish">完了</string>

@@ -68,7 +68,7 @@ import com.openclaw.assistant.ui.chat.ChatUiState
 import com.openclaw.assistant.ui.chat.ChatViewModel
 import com.openclaw.assistant.ui.chat.PendingFileAttachment
 import com.openclaw.assistant.ui.chat.ChatMessage
-import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
+import com.openclaw.assistant.ui.theme.VoiceRelayTheme
 import androidx.compose.material3.TextButton
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -141,7 +141,7 @@ class ChatActivity : ComponentActivity() {
         }
 
         setContent {
-            OpenClawAssistantTheme {
+            VoiceRelayTheme {
                 val uiState by viewModel.uiState.collectAsState()
                 val allSessions by viewModel.allSessions.collectAsState()
                 val currentSessionId by viewModel.currentSessionId.collectAsState()

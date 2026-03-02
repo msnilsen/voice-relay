@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val OpenClawColorScheme = darkColorScheme(
+private val VoiceRelayColorScheme = darkColorScheme(
     primary = OpenClawOrange,
     secondary = OpenClawPopYellow,
     tertiary = OpenClawOrange,
@@ -24,11 +24,10 @@ private val OpenClawColorScheme = darkColorScheme(
 )
 
 @Composable
-fun OpenClawAssistantTheme(
+fun VoiceRelayTheme(
     content: @Composable () -> Unit
 ) {
-    // Always use the OpenClaw dark scheme
-    val colorScheme = OpenClawColorScheme
+    val colorScheme = VoiceRelayColorScheme
     
     val view = LocalView.current
     if (!view.isInEditMode) {

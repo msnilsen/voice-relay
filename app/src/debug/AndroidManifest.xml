@@ -4,7 +4,7 @@
     <application>
         <!--
             Remove FirebaseInitProvider from debug builds so that Firebase is not
-            initialized automatically. OpenClawApplication initializes it manually
+            initialized automatically. The Application class initializes it manually
             based on BuildConfig.FIREBASE_ENABLED, which CI sets to false for fork
             PRs that do not have access to the DEBUG_GOOGLE_SERVICES_JSON secret.
         -->

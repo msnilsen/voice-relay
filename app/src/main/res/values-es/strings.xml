@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Asistente de OpenClaw</string>
+    <string name="app_name">Voice Relay</string>
     <string name="notification_channel_name">Servicio Wake Word</string>
     <string name="notification_channel_description">Servicio de detección de voz siempre activo</string>
-    <string name="notification_title">Asistente de OpenClaw</string>
+    <string name="notification_title">Voice Relay</string>
     <string name="notification_content">Di \"%s\" para activar</string>
     <string name="default_session_title_format">Sesión de voz %s</string>
     <string name="chat_session_title_format">Chat %s</string>
@@ -47,7 +47,7 @@
     <string name="processing">Procesando…</string>
     <string name="error_label">Error</string>
     <string name="try_again_button">Inténtalo de nuevo</string>
-    <string name="ask_hint">Pregunte a OpenClaw…</string>
+    <string name="ask_hint">Pregunte lo que sea…</string>
     <string name="send_description">Enviar</string>
     <string name="stop_description">Detener</string>
     <string name="listening">Escuchando…</string>
@@ -67,7 +67,6 @@
     <string name="disabled">Deshabilitado</string>
     <string name="open_chat">Abrir chat</string>
     <string name="setup_required">Se requiere configuración</string>
-    <string name="connected_to_openclaw">Conectado a OpenClaw</string>
     <string name="permissions_required">Permisos necesarios</string>
     <string name="could_not_open_settings">No se pudo abrir la configuración</string>
     <string name="hotword_started">Se inició la detección de Wake Word</string>
@@ -78,7 +77,7 @@
     <string name="got_it">Entendido</string>
     <string name="step_1">Mantenga presionado Inicio o diga \"%s\"</string>
     <string name="step_2">Haga su pregunta o solicitud</string>
-    <string name="step_3">OpenClaw lee la respuesta en voz alta</string>
+    <string name="step_3">La app lee la respuesta en voz alta</string>
     <string name="step_4">Continuar conversación (sesión mantenida)</string>
     <string name="assist_gesture_not_working">¿El gesto de asistencia no funciona?</string>
     <string name="troubleshooting_intro">Incluso si está configurado como predeterminado, algunas funciones del sistema pueden anular el gesto de pulsación larga.</string>
@@ -89,7 +88,7 @@
     <string name="google_app_setting_title">Configuración de la aplicación Google</string>
     <string name="google_app_setting_desc">Abre la aplicación de Google → Toca Perfil → Configuración → Asistente de Google → General → Desactiva el \'Asistente de Google\' si aún interfiere.</string>
     <string name="refresh_binding_title">Actualizar enlace</string>
-    <string name="refresh_binding_desc">Si el estado es \'Activo\' pero aún así no funciona, intente cambiar \'Aplicación de asistente digital\' a \'Ninguno\' y luego vuelva a \'OpenClaw Assistant\'.</string>
+    <string name="refresh_binding_desc">Si el estado es \'Activo\' pero aún así no funciona, intente cambiar \'Aplicación de asistente digital\' a \'Ninguno\' y luego vuelva a \'Voice Relay\'.</string>
     <string name="debug_force_start">Depuración: Forzar inicio de sesión</string>
     <string name="connection">Conexión</string>
     <string name="voice">Voz</string>
@@ -177,7 +176,7 @@ Para más detalles, consulta el sitio oficial de VOICEVOX.</string>
     <string name="connected">¡Conectado!</string>
     <string name="failed">Error: %s</string>
     <string name="error">Error: %s</string>
-    <string name="wake_word_openclaw">OpenClaw</string>
+    <string name="wake_word_openclaw">Open Claw</string>
     <string name="wake_word_hey_assistant">Hola asistente</string>
     <string name="wake_word_jarvis">Jarvis</string>
     <string name="wake_word_computer">Computadora</string>
@@ -254,7 +253,7 @@ Para más detalles, consulta el sitio oficial de VOICEVOX.</string>
     <string name="support_section">Soporte</string>
     <string name="report_issue">Reportar problema</string>
     <string name="report_issue_desc">¿Encontró un error o tiene una solicitud de función? Háganos saber en GitHub.</string>
-    <string name="permissions_for_openclaw_title">Permisos para OpenClaw</string>
+    <string name="permissions_for_openclaw_title">Permisos de la aplicación</string>
     <string name="capabilities_title">Capacidad</string>
     <string name="capability_talk">Hablar</string>
     <string name="diagnostics_title">Diagnóstico</string>
@@ -281,8 +280,8 @@ Para más detalles, consulta el sitio oficial de VOICEVOX.</string>
     <string name="wake_word_classic_title">Vosk</string>
     <string name="wake_word_engine_vosk">Vosk (local)</string>
     <string name="wake_words_label">Wake Words</string>
-    <string name="wake_words_placeholder">openclaw, claude</string>
-    <string name="wake_words_help">Palabras separadas por comas que activan el asistente (por ejemplo, "openclaw, claude")</string>
+    <string name="wake_words_placeholder">jarvis, hey assistant</string>
+    <string name="wake_words_help">Palabras separadas por comas que activan el asistente (por ejemplo, "jarvis, hey assistant")</string>
     <string name="connection_settings">Configuración de conexión</string>
     <string name="tab_http">HTTP</string>
     <string name="http_api_configuration">Configuración de API HTTP</string>
@@ -304,7 +303,7 @@ Para más detalles, consulta el sitio oficial de VOICEVOX.</string>
     <string name="up_to_date">La aplicación está actualizada</string>
     <string name="update_action">Actualizar</string>
     <string name="setup_guide_first_run">PRIMERA EJECUCIÓN</string>
-    <string name="setup_guide_title">Asistente de OpenClaw\nConfiguración móvil</string>
+    <string name="setup_guide_title">Voice Relay\nConfiguración</string>
     <string name="setup_guide_step_format">Paso %1$d de %2$d</string>
     <string name="setup_guide_welcome_title">Lo que obtienes</string>
     <string name="setup_guide_welcome_bullet_2">Conéctese con el código de configuración y recupere el emparejamiento con los comandos CLI.</string>
@@ -321,7 +320,7 @@ Para más detalles, consulta el sitio oficial de VOICEVOX.</string>
     <string name="setup_guide_manual_token">TOKEN (OPCIONAL)</string>
     <string name="setup_guide_manual_password">CONTRASEÑA (OPCIONAL)</string>
     <string name="setup_guide_permissions_title">Permisos</string>
-    <string name="setup_guide_permissions_desc">Otorgar permisos para habilitar las funciones de OpenClaw.</string>
+    <string name="setup_guide_permissions_desc">Otorgar permisos para habilitar las funciones de voz.</string>
     <string name="setup_guide_final_check_title">Verificación final</string>
     <string name="setup_guide_final_check_desc">Verificar conexión y configuración.</string>
     <string name="setup_guide_finish">Finalizar</string>

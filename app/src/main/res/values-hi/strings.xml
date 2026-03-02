@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ओपनक्ला सहायक</string>
+    <string name="app_name">Voice Relay</string>
     <string name="notification_channel_name">जागो वर्ड सर्विस</string>
     <string name="notification_channel_description">हमेशा चालू रहने वाली ध्वनि पहचान सेवा</string>
-    <string name="notification_title">ओपनक्ला सहायक</string>
+    <string name="notification_title">Voice Relay</string>
     <string name="notification_content">सक्रिय करने के लिए \"%s\" कहें</string>
     <string name="default_session_title_format">ध्वनि सत्र %s</string>
     <string name="chat_session_title_format">चैट %s</string>
@@ -47,7 +47,7 @@
     <string name="processing">प्रसंस्करण…</string>
     <string name="error_label">गलती</string>
     <string name="try_again_button">पुनः प्रयास करें</string>
-    <string name="ask_hint">ओपनक्लॉ से पूछें...</string>
+    <string name="ask_hint">कुछ भी पूछें...</string>
     <string name="send_description">भेजना</string>
     <string name="stop_description">रुकना</string>
     <string name="listening">सुनना…</string>
@@ -67,7 +67,6 @@
     <string name="disabled">अक्षम</string>
     <string name="open_chat">चैट खोलें</string>
     <string name="setup_required">सेटअप आवश्यक</string>
-    <string name="connected_to_openclaw">ओपनक्लॉ से जुड़ा हुआ</string>
     <string name="permissions_required">अनुमतियाँ आवश्यक हैं</string>
     <string name="could_not_open_settings">सेटिंग्स नहीं खोली जा सकीं</string>
     <string name="hotword_started">वेक वर्ड पहचान प्रारंभ हुई</string>
@@ -78,7 +77,7 @@
     <string name="got_it">समझ गया</string>
     <string name="step_1">होम को देर तक दबाएँ या कहें \"%s\"</string>
     <string name="step_2">अपना प्रश्न या अनुरोध पूछें</string>
-    <string name="step_3">OpenClaw प्रतिक्रिया को ज़ोर से पढ़ता है</string>
+    <string name="step_3">ऐप प्रतिक्रिया को ज़ोर से पढ़ता है</string>
     <string name="step_4">बातचीत जारी रखें (सत्र कायम)</string>
     <string name="assist_gesture_not_working">सहायता संकेत काम नहीं कर रहा?</string>
     <string name="troubleshooting_intro">भले ही डिफ़ॉल्ट के रूप में सेट किया गया हो, कुछ सिस्टम सुविधाएँ लंबे समय तक प्रेस करने वाले जेस्चर को ओवरराइड कर सकती हैं।</string>
@@ -89,7 +88,7 @@
     <string name="google_app_setting_title">Google ऐप सेटिंग</string>
     <string name="google_app_setting_desc">Google ऐप खोलें → प्रोफ़ाइल → सेटिंग्स → Google Assistant → सामान्य → अगर यह अभी भी हस्तक्षेप करता है तो \'Google Assistant\' को बंद कर दें।</string>
     <string name="refresh_binding_title">रिफ्रेश बाइंडिंग</string>
-    <string name="refresh_binding_desc">यदि स्थिति \'सक्रिय\' है लेकिन यह अभी भी काम नहीं करेगा, तो \'डिजिटल असिस्टेंट ऐप\' को \'कोई नहीं\' में बदलने का प्रयास करें और फिर वापस \'ओपनक्ला असिस्टेंट\' पर जाएं।</string>
+    <string name="refresh_binding_desc">यदि स्थिति \'सक्रिय\' है लेकिन यह अभी भी काम नहीं करेगा, तो \'डिजिटल असिस्टेंट ऐप\' को \'कोई नहीं\' में बदलने का प्रयास करें और फिर वापस \'Voice Relay\' पर जाएं।</string>
     <string name="debug_force_start">डीबग: बलपूर्वक प्रारंभ सत्र</string>
     <string name="connection">संबंध</string>
     <string name="voice">आवाज़</string>
@@ -177,7 +176,7 @@
     <string name="connected">जुड़े हुए!</string>
     <string name="failed">विफल: %s</string>
     <string name="error">त्रुटि: %s</string>
-    <string name="wake_word_openclaw">खुला पंजा</string>
+    <string name="wake_word_openclaw">Open Claw</string>
     <string name="wake_word_hey_assistant">अरे सहायक!</string>
     <string name="wake_word_jarvis">जार्विस</string>
     <string name="wake_word_computer">कंप्यूटर</string>
@@ -254,7 +253,7 @@
     <string name="support_section">सहायता</string>
     <string name="report_issue">रिपोर्ट मुद्दा</string>
     <string name="report_issue_desc">कोई बग मिला या कोई सुविधा अनुरोध है? हमें GitHub पर बताएं।</string>
-    <string name="permissions_for_openclaw_title">ओपनक्ला के लिए अनुमतियाँ</string>
+    <string name="permissions_for_openclaw_title">ऐप अनुमतियाँ</string>
     <string name="capabilities_title">क्षमताओं</string>
     <string name="capability_talk">बात करना</string>
     <string name="diagnostics_title">निदान</string>
@@ -281,8 +280,8 @@
     <string name="wake_word_classic_title">Vosk</string>
     <string name="wake_word_engine_vosk">वोस्क (स्थानीय)</string>
     <string name="wake_words_label">जागो शब्द</string>
-    <string name="wake_words_placeholder">openclaw, claude</string>
-    <string name="wake_words_help">अल्पविराम से अलग किए गए शब्द जो सहायक को सक्रिय करते हैं (उदाहरण के लिए "ओपनक्लाव, क्लाउड")</string>
+    <string name="wake_words_placeholder">jarvis, hey assistant</string>
+    <string name="wake_words_help">अल्पविराम से अलग किए गए शब्द जो सहायक को सक्रिय करते हैं (उदाहरण के लिए "jarvis, hey assistant")</string>
     <string name="connection_settings">कनेक्शन सेटिंग्स</string>
     <string name="tab_http">HTTP</string>
     <string name="http_api_configuration">HTTP एपीआई कॉन्फ़िगरेशन</string>
@@ -304,7 +303,7 @@
     <string name="up_to_date">ऐप अद्यतित है</string>
     <string name="update_action">अद्यतन</string>
     <string name="setup_guide_first_run">पहली दौड़</string>
-    <string name="setup_guide_title">OpenClaw Assistant\nमोबाइल सेटअप</string>
+    <string name="setup_guide_title">Voice Relay\nसेटअप</string>
     <string name="setup_guide_step_format">%2$d का चरण %1$d</string>
     <string name="setup_guide_welcome_title">आपको क्या मिलता है</string>
     <string name="setup_guide_welcome_bullet_2">सेटअप कोड से कनेक्ट करें और सीएलआई कमांड के साथ पेयरिंग पुनर्प्राप्त करें।</string>
@@ -321,7 +320,7 @@
     <string name="setup_guide_manual_token">टोकन (वैकल्पिक)</string>
     <string name="setup_guide_manual_password">पासवर्ड (वैकल्पिक)</string>
     <string name="setup_guide_permissions_title">अनुमतियां</string>
-    <string name="setup_guide_permissions_desc">OpenClaw सुविधाओं को सक्षम करने के लिए अनुमतियाँ प्रदान करें।</string>
+    <string name="setup_guide_permissions_desc">वॉयस सुविधाओं को सक्षम करने के लिए अनुमतियाँ प्रदान करें।</string>
     <string name="setup_guide_final_check_title">अंतिम जांच</string>
     <string name="setup_guide_final_check_desc">कनेक्शन और सेटिंग्स सत्यापित करें.</string>
     <string name="setup_guide_finish">खत्म करना</string>

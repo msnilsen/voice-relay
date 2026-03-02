@@ -53,7 +53,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
+import com.openclaw.assistant.ui.theme.VoiceRelayTheme
 
 class SessionListActivity : ComponentActivity() {
 
@@ -76,7 +76,7 @@ class SessionListActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            OpenClawAssistantTheme {
+            VoiceRelayTheme {
                 val sessions by viewModel.allSessions.collectAsState()
                 SessionListScreen(
                     sessions = sessions,

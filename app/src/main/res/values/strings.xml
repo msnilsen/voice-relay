@@ -79,7 +79,6 @@
     <string name="disabled">Disabled</string>
     <string name="open_chat">Open Chat</string>
     <string name="setup_required">Setup Required</string>
-    <string name="connected_to_openclaw">Connected</string>
     <string name="permissions_required">Permissions required</string>
     <string name="could_not_open_settings">Could not open settings</string>
     <string name="hotword_started">Wake Word detection started</string>
@@ -251,7 +250,6 @@
     <!-- Operator Offline Warning -->
     <string name="operator_offline_title">Operator Offline / Permission Needed</string>
     <string name="operator_offline_message">Your device is connected, but the AI lacks permission to operate it.\n\nPlease run the following command on your server to grant operator access:</string>
-    <string name="operator_offline_command">openclaw devices approve %s</string>
     <string name="operator_offline_copy">Copy Command</string>
     <string name="operator_offline_copied">Command copied to clipboard</string>
     <string name="operator_offline_action">Run on server</string>
@@ -305,7 +303,6 @@
     <string name="pairing_guide_step_2">2. Paste and run the Approve command.</string>
     <string name="pairing_guide_step_3">3. Once the server says \"Device approved\", tap Refresh Status below.</string>
     <string name="pairing_troubleshooting_title">Troubleshooting</string>
-    <string name="pairing_troubleshooting_desc">• Ensure the Server URL in Settings is correct.\n• If the command fails, check if the openclaw CLI is installed.\n• You can also manually approve using: openclaw devices approve &lt;REQUEST_ID&gt;</string>
 
     <!-- Support Section -->
     <string name="language_section">Language</string>
@@ -478,7 +475,6 @@
     <string name="setup_guide_mode_setup_code">Setup Code</string>
     <string name="setup_guide_mode_manual">Manual</string>
     <string name="setup_guide_setup_code_label">SETUP CODE</string>
-    <string name="setup_guide_setup_code_hint">Paste code from `openclaw qr --setup-code-only`</string>
     <string name="setup_guide_manual_host">HOST</string>
     <string name="setup_guide_manual_port">PORT</string>
     <string name="setup_guide_manual_tls">Use TLS</string>

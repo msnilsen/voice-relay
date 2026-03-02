@@ -59,7 +59,7 @@ import com.openclaw.assistant.speech.diagnostics.DiagnosticStatus
 import com.openclaw.assistant.speech.diagnostics.VoiceDiagnostic
 import com.openclaw.assistant.speech.diagnostics.VoiceDiagnostics
 import com.openclaw.assistant.ui.components.CollapsibleSection
-import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
+import com.openclaw.assistant.ui.theme.VoiceRelayTheme
 import com.openclaw.assistant.ui.SetupGuideScreen
 
 data class PermissionStatusInfo(
@@ -137,7 +137,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         refreshAllPermissionsStatus()
 
         setContent {
-            OpenClawAssistantTheme {
+            VoiceRelayTheme {
                 val hasCompletedSetup by remember { mutableStateOf(settings.hasCompletedSetup) }
                 var showSetupGuide by remember { mutableStateOf(!hasCompletedSetup) }
 
