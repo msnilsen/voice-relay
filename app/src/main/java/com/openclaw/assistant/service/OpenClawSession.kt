@@ -92,6 +92,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     private var partialText = mutableStateOf("")
     private var errorMessage = mutableStateOf<String?>(null)
     private var audioLevel = mutableStateOf(0f) // Audio level for visualization
+    private var userRequestedClose = false
 
     // WakeLock to keep CPU alive during voice conversation when screen is off
     private var wakeLock: PowerManager.WakeLock? = null
@@ -174,7 +175,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                     partialText = partialText.value,
                     errorMessage = errorMessage.value,
                     audioLevel = audioLevel.value,
-                    onClose = { finish() },
+                    onClose = { userRequestedClose = true; finish() },
                     onRetry = { startListening() },
                     onInterrupt = { interruptAndListen() }
                 )
@@ -185,6 +186,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
 
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
+        userRequestedClose = false
 
         // Recreate scope if it was cancelled by a previous onHide()
         if (!scope.isActive) {
@@ -247,6 +249,14 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     override fun onHide() {
         super.onHide()
 
+        // User explicitly pressed close — always clean up
+        if (userRequestedClose) {
+            userRequestedClose = false
+            Log.d(TAG, "onHide: user requested close, cleaning up")
+            cleanupSession()
+            return
+        }
+
         // If a voice session is active (listening, thinking, or speaking),
         // keep resources alive so conversation continues with screen off.
         val state = currentState.value
@@ -258,8 +268,6 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         
         if (isVoiceActive) {
             Log.d(TAG, "onHide: voice session active ($state), keeping resources alive")
-            // Keep scope, speechManager, ttsManager alive
-            // SessionForegroundService is already running
             return
         }
 
@@ -399,7 +407,8 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                                         hasActuallySpoken = true // break the loop but don't finish
                                     } else {
                                         playTone(android.media.ToneGenerator.TONE_PROP_NACK, 100)
-                                        finish() // Close the session
+                                        userRequestedClose = true
+                                        finish()
                                     }
                                 } else {
                                     playTone(android.media.ToneGenerator.TONE_PROP_NACK, 100)
@@ -421,7 +430,8 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                         Log.d(TAG, "Manual timeout but AI is $state, not closing session")
                         hasActuallySpoken = true // break the loop but don't finish
                     } else {
-                        finish() // Close the session
+                        userRequestedClose = true
+                        finish()
                         hasActuallySpoken = true
                     }
                 }
