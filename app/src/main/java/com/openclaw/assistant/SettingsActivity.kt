@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -244,6 +245,9 @@ fun SettingsScreen(
     var resumeLatestSession by rememberSaveable { mutableStateOf(settings.resumeLatestSession) }
     var wakeWordPreset by rememberSaveable { mutableStateOf(settings.wakeWordPreset) }
     var customWakeWord by rememberSaveable { mutableStateOf(settings.customWakeWord) }
+    var wakeWordEngine by rememberSaveable { mutableStateOf(settings.wakeWordEngine) }
+    var porcupineAccessKey by rememberSaveable { mutableStateOf(settings.porcupineAccessKey) }
+    var showPorcupineKey by rememberSaveable { mutableStateOf(false) }
     var speechSilenceTimeout by rememberSaveable { mutableStateOf(settings.speechSilenceTimeout.toFloat().coerceIn(5000f, 30000f)) }
     var speechLanguage by rememberSaveable { mutableStateOf(settings.speechLanguage) }
     var appLanguage by rememberSaveable { mutableStateOf(settings.appLanguage) }
@@ -373,6 +377,8 @@ fun SettingsScreen(
                             settings.resumeLatestSession = resumeLatestSession
                             settings.wakeWordPreset = wakeWordPreset
                             settings.customWakeWord = customWakeWord
+                            settings.wakeWordEngine = wakeWordEngine
+                            settings.porcupineAccessKey = porcupineAccessKey
                             settings.speechSilenceTimeout = speechSilenceTimeout.toLong()
                             settings.speechLanguage = speechLanguage
                             settings.appLanguage = appLanguage
@@ -953,7 +959,80 @@ fun SettingsScreen(
                                 )
                             }
 
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
 
+                        Text(
+                            text = stringResource(R.string.wake_word_engine_title),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.wake_word_engine_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = wakeWordEngine == SettingsRepository.WAKE_WORD_ENGINE_VOSK,
+                                onClick = { wakeWordEngine = SettingsRepository.WAKE_WORD_ENGINE_VOSK },
+                                label = { Text(stringResource(R.string.engine_vosk)) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = wakeWordEngine == SettingsRepository.WAKE_WORD_ENGINE_PORCUPINE,
+                                onClick = { wakeWordEngine = SettingsRepository.WAKE_WORD_ENGINE_PORCUPINE },
+                                label = { Text(stringResource(R.string.engine_porcupine)) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        if (wakeWordEngine == SettingsRepository.WAKE_WORD_ENGINE_PORCUPINE) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = porcupineAccessKey,
+                                onValueChange = { porcupineAccessKey = it.trim() },
+                                label = { Text(stringResource(R.string.porcupine_access_key)) },
+                                placeholder = { Text(stringResource(R.string.porcupine_access_key_hint)) },
+                                leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
+                                trailingIcon = {
+                                    IconButton(onClick = { showPorcupineKey = !showPorcupineKey }) {
+                                        Icon(
+                                            if (showPorcupineKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = null
+                                        )
+                                    }
+                                },
+                                visualTransformation = if (showPorcupineKey)
+                                    androidx.compose.ui.text.input.VisualTransformation.None
+                                else
+                                    androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.porcupine_access_key_help),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable {
+                                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://console.picovoice.ai/"))
+                                    context.startActivity(intent)
+                                }
+                            )
+                            if (porcupineAccessKey.isBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = stringResource(R.string.porcupine_key_required),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
 

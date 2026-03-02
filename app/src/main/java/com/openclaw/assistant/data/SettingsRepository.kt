@@ -63,6 +63,14 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_CUSTOM_WAKE_WORD, "") ?: ""
         set(value) = prefs.edit().putString(KEY_CUSTOM_WAKE_WORD, value).apply()
 
+    var wakeWordEngine: String
+        get() = prefs.getString(KEY_WAKE_WORD_ENGINE, WAKE_WORD_ENGINE_VOSK) ?: WAKE_WORD_ENGINE_VOSK
+        set(value) = prefs.edit().putString(KEY_WAKE_WORD_ENGINE, value).apply()
+
+    var porcupineAccessKey: String
+        get() = prefs.getString(KEY_PORCUPINE_ACCESS_KEY, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_PORCUPINE_ACCESS_KEY, value).apply()
+
     // Get the actual wake words list for Vosk
     fun getWakeWords(): List<String> {
         return when (wakeWordPreset) {
@@ -273,6 +281,10 @@ class SettingsRepository(context: Context) {
         private const val KEY_HOTWORD_ENABLED = "hotword_enabled"
         private const val KEY_WAKE_WORD_PRESET = "wake_word_preset"
         private const val KEY_CUSTOM_WAKE_WORD = "custom_wake_word"
+        private const val KEY_WAKE_WORD_ENGINE = "wake_word_engine"
+        private const val KEY_PORCUPINE_ACCESS_KEY = "porcupine_access_key"
+        const val WAKE_WORD_ENGINE_VOSK = "vosk"
+        const val WAKE_WORD_ENGINE_PORCUPINE = "porcupine"
         private const val KEY_IS_VERIFIED = "is_verified"
         private const val KEY_TTS_ENABLED = "tts_enabled"
         private const val KEY_CONTINUOUS_MODE = "continuous_mode"

@@ -415,8 +415,16 @@
     <string name="wake_word_node_foreground_desc">Listens only while the app is open.</string>
     <string name="wake_word_node_always">Always</string>
     <string name="wake_word_node_always_desc">Continues listening in the background (uses a persistent notification).</string>
-    <string name="wake_word_classic_title">Vosk</string>
+    <string name="wake_word_classic_title">Activation Phrase</string>
     <string name="wake_word_engine_vosk">Vosk (Local)</string>
+    <string name="wake_word_engine_title">Detection Engine</string>
+    <string name="wake_word_engine_desc">Vosk runs fully offline. Porcupine is more accurate but requires a free API key from Picovoice.</string>
+    <string name="engine_vosk">Vosk (Offline)</string>
+    <string name="engine_porcupine">Porcupine</string>
+    <string name="porcupine_access_key">Porcupine Access Key</string>
+    <string name="porcupine_access_key_hint">Paste your Picovoice access key</string>
+    <string name="porcupine_access_key_help">Get a free key at console.picovoice.ai</string>
+    <string name="porcupine_key_required">An access key is required to use Porcupine</string>
     <string name="wake_words_label">Wake Words</string>
     <string name="wake_words_placeholder">jarvis, hey assistant</string>
     <string name="wake_words_help">Comma-separated words that activate the assistant (e.g. "jarvis, computer")</string>

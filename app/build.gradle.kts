@@ -192,6 +192,7 @@ dependencies {
 
     // Vosk
     implementation("com.alphacephei:vosk-android:0.3.75")
+    implementation("ai.picovoice:porcupine-android:3.0.3")
     
     // VOICEVOX (full flavor only)
     // libvoicevox_onnxruntime.so (VoiceVox custom ORT v1.17.3) is bundled in
