@@ -64,12 +64,10 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.activity.compose.rememberLauncherForActivityResult
-import com.openclaw.assistant.ui.components.PairingRequiredCard
 import com.openclaw.assistant.ui.chat.ChatUiState
 import com.openclaw.assistant.ui.chat.ChatViewModel
 import com.openclaw.assistant.ui.chat.PendingFileAttachment
 import com.openclaw.assistant.ui.chat.ChatMessage
-import com.openclaw.assistant.gateway.AgentInfo
 import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
 import androidx.compose.material3.TextButton
 import kotlinx.coroutines.launch
@@ -82,9 +80,10 @@ import android.content.ContentResolver
 
 import com.openclaw.assistant.data.SettingsRepository
 import com.openclaw.assistant.service.HotwordService
-import com.openclaw.assistant.ui.GatewayTrustDialog
 
 private const val TAG = "ChatActivity"
+
+data class AgentOption(val id: String, val name: String)
 
 class ChatActivity : ComponentActivity() {
 
@@ -173,8 +172,6 @@ class ChatActivity : ComponentActivity() {
                     },
                     onBack = { finish() },
                     onAgentSelected = { viewModel.setAgent(it) },
-                    onAcceptGatewayTrust = { viewModel.acceptGatewayTrust() },
-                    onDeclineGatewayTrust = { viewModel.declineGatewayTrust() },
                     onAttachFiles = { viewModel.addAttachments(it) },
                     onRemoveAttachment = { viewModel.removeAttachment(it) }
                 )
@@ -191,14 +188,7 @@ class ChatActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Pause hotword detection while this activity holds the mic.
-        // setPackage is required to reach NodeForegroundService (RECEIVER_NOT_EXPORTED).
         sendBroadcast(Intent(HotwordService.ACTION_PAUSE_HOTWORD).apply { setPackage(packageName) })
-        // Refresh chat history in NodeChat mode to show any responses that arrived
-        // while the screen was away (e.g., after returning from the session list).
-        // Skip on first resume (right after onCreate) since loadChat bootstrap is already running.
-        if (hasResumedOnce) {
-            viewModel.refreshChatIfNeeded()
-        }
         hasResumedOnce = true
     }
 
@@ -210,7 +200,6 @@ class ChatActivity : ComponentActivity() {
         if (!viewModel.isVoiceSessionActive()) {
             viewModel.stopListening()
             // Resume hotword detection now that the mic will be released.
-            // setPackage is required to reach NodeForegroundService (RECEIVER_NOT_EXPORTED).
             sendBroadcast(Intent(HotwordService.ACTION_RESUME_HOTWORD).apply { setPackage(packageName) })
         }
     }
@@ -286,8 +275,6 @@ fun ChatScreen(
     onInterruptAndListen: () -> Unit,
     onBack: () -> Unit,
     onAgentSelected: (String?) -> Unit = {},
-    onAcceptGatewayTrust: () -> Unit = {},
-    onDeclineGatewayTrust: () -> Unit = {},
     onAttachFiles: (List<PendingFileAttachment>) -> Unit = {},
     onRemoveAttachment: (String) -> Unit = {}
 ) {
@@ -373,7 +360,7 @@ fun ChatScreen(
 
     // Scroll to bottom effect (animate when size changes)
     var previousItemCount by remember { mutableIntStateOf(groupedItems.size) }
-    LaunchedEffect(groupedItems.size, uiState.isThinking, uiState.isSpeaking, uiState.isPreparingSpeech, uiState.pendingToolCalls.size) {
+    LaunchedEffect(groupedItems.size, uiState.isThinking, uiState.isSpeaking, uiState.isPreparingSpeech) {
         if (groupedItems.size > previousItemCount + 1 || previousItemCount == 0) {
             listState.scrollToItem(0)
         } else {
@@ -412,11 +399,11 @@ fun ChatScreen(
                                 )
                             }
                             AgentSelector(
-                                agents = uiState.availableAgents,
+                                agents = emptyList<AgentOption>(),
                                 selectedAgentId = uiState.selectedAgentId,
                                 defaultAgentId = uiState.defaultAgentId,
                                 onAgentSelected = onAgentSelected,
-                                isReadOnly = uiState.isNodeChatMode
+                                isReadOnly = false
                             )
                         }
                     },
@@ -480,22 +467,6 @@ fun ChatScreen(
             }
         ) { paddingValues ->
             Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                // Gateway TLS Trust prompt
-                if (uiState.pendingGatewayTrust != null) {
-                    GatewayTrustDialog(
-                        prompt = uiState.pendingGatewayTrust,
-                        onAccept = onAcceptGatewayTrust,
-                        onDecline = onDeclineGatewayTrust
-                    )
-                }
-
-                // Pairing Guidance
-                if (uiState.isPairingRequired && uiState.deviceId != null) {
-                    Box(modifier = Modifier.padding(16.dp)) {
-                        PairingRequiredCard(deviceId = uiState.deviceId, displayName = uiState.displayName)
-                    }
-                }
-
                 Box(modifier = Modifier.weight(1f)) {
                     LazyColumn(
                         state = listState,
@@ -506,9 +477,6 @@ fun ChatScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         contentPadding = PaddingValues(bottom = 16.dp, top = 8.dp)
                     ) {
-                        if (uiState.pendingToolCalls.isNotEmpty()) {
-                            item { PendingToolsIndicator(uiState.pendingToolCalls) }
-                        }
                         if (uiState.isPreparingSpeech) {
                             item { PreparingSpeechIndicator() }
                         }
@@ -855,7 +823,7 @@ fun PendingToolsIndicator(toolCalls: List<String>) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentSelector(
-    agents: List<AgentInfo>,
+    agents: List<AgentOption>,
     selectedAgentId: String?,
     defaultAgentId: String = "main",
     onAgentSelected: (String?) -> Unit,

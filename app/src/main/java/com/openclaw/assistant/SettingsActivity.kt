@@ -13,7 +13,6 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -40,16 +39,10 @@ import com.openclaw.assistant.api.RequestFormat
 import com.openclaw.assistant.api.WebhookClient
 
 import com.openclaw.assistant.data.SettingsRepository
-import com.openclaw.assistant.service.NodeForegroundService
 import com.openclaw.assistant.service.HotwordService
 import com.openclaw.assistant.ui.components.CollapsibleSection
-import com.openclaw.assistant.ui.components.ConnectionState
-import com.openclaw.assistant.ui.components.PairingRequiredCard
-import com.openclaw.assistant.ui.components.StatusIndicator
-import com.openclaw.assistant.gateway.AgentInfo
 import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.openclaw.assistant.utils.GatewayConfigUtils
 import com.openclaw.assistant.utils.SystemInfoProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -261,28 +254,13 @@ fun SettingsScreen(
     var showLanguageMenu by rememberSaveable { mutableStateOf(false) }
     var showDisplayLanguageMenu by rememberSaveable { mutableStateOf(false) }
     var httpIgnoreSslErrors by rememberSaveable { mutableStateOf(settings.httpIgnoreSslErrors) }
-    var wakewordConnectionType by rememberSaveable { mutableStateOf(settings.wakewordConnectionType) }
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val runtime = remember(context.applicationContext) {
-        (context.applicationContext as OpenClawApplication).nodeRuntime
-    }
     val apiClient = remember(httpIgnoreSslErrors) { WebhookClient(ignoreSslErrors = httpIgnoreSslErrors) }
     
     var isTesting by rememberSaveable { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<TestResult?>(null) }
-
-    // Agent list from NodeRuntime
-    val isPairingRequired by runtime.isPairingRequired.collectAsState()
-    val deviceId = runtime.deviceId
-
-    val agentListState by runtime.agentList.collectAsState()
-    val availableAgents = remember(agentListState) {
-        agentListState?.agents?.distinctBy { it.id } ?: emptyList()
-    }
-    var isFetchingAgents by rememberSaveable { mutableStateOf(false) }
-    var showAgentMenu by rememberSaveable { mutableStateOf(false) }
 
     // TTS Engines
     var ttsEngine by rememberSaveable { mutableStateOf(settings.ttsEngine) }
@@ -310,44 +288,10 @@ fun SettingsScreen(
     var showEngineMenu by rememberSaveable { mutableStateOf(false) }
     var showNodeToken by rememberSaveable { mutableStateOf(false) }
 
-    val nodeConnected by runtime.isConnected.collectAsState()
-    val nodeStatus by runtime.statusText.collectAsState()
-    val nodeForeground by runtime.isForeground.collectAsState()
-
-    val manualEnabledState by runtime.manualEnabled.collectAsState()
-    val manualHostState by runtime.manualHost.collectAsState()
-    val manualPortState by runtime.manualPort.collectAsState()
-    val manualTlsState by runtime.manualTls.collectAsState()
-    val gatewayTokenState by runtime.gatewayToken.collectAsState()
-
-    // Connection Type
-    var connectionType by rememberSaveable { mutableStateOf(settings.connectionType) }
-
-    // Gateway inputs
-    var gatewayHost by rememberSaveable { mutableStateOf(manualHostState) }
-    var gatewayPort by rememberSaveable { mutableStateOf(manualPortState.toString()) }
-    var gatewayTls by rememberSaveable { mutableStateOf(manualTlsState) }
-    var gatewayToken by rememberSaveable { mutableStateOf(gatewayTokenState) }
-    var gatewayPassword by rememberSaveable { mutableStateOf(runtime.getGatewayPassword() ?: "") }
-    var showGatewayPassword by rememberSaveable { mutableStateOf(false) }
-    var usePasswordAuth by rememberSaveable { mutableStateOf(runtime.getGatewayPassword()?.isNotEmpty() == true) }
-
-    // Setup code (quick-config from `openclaw qr --setup-code-only`)
-    var setupCode by rememberSaveable { mutableStateOf("") }
-    var setupCodeApplied by rememberSaveable { mutableStateOf(false) }
-    var setupCodeError by rememberSaveable { mutableStateOf(false) }
-
     // HTTP inputs
     var httpInputUrl by rememberSaveable { mutableStateOf(httpUrl) }
     var httpToken by rememberSaveable { mutableStateOf(authToken) }
 
-    // Update local state if runtime state changes behind the scenes
-    LaunchedEffect(manualHostState, manualPortState, manualTlsState, gatewayTokenState) {
-        gatewayHost = manualHostState
-        gatewayPort = manualPortState.toString()
-        gatewayTls = manualTlsState
-        gatewayToken = gatewayTokenState
-    }
     LaunchedEffect(httpUrl, authToken) {
         httpInputUrl = httpUrl
         httpToken = authToken
@@ -355,13 +299,6 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         availableEngines = com.openclaw.assistant.speech.TTSEngineUtils.getAvailableEngines(context)
-    }
-
-    // Fetch agent list on screen open if already connected
-    LaunchedEffect(Unit) {
-        if (runtime.isConnected.value) {
-            runtime.refreshAgentList()
-        }
     }
 
     // Speech recognition language options - loaded dynamically from device
@@ -401,10 +338,6 @@ fun SettingsScreen(
         SettingsRepository.WAKE_WORD_CUSTOM to stringResource(R.string.wake_word_custom)
     )
 
-    var selectedTabIndex by remember {
-        mutableStateOf(if (connectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) 0 else 1)
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -420,26 +353,6 @@ fun SettingsScreen(
                     }
                     TextButton(
                         onClick = {
-                            settings.connectionType = if (selectedTabIndex == 0) {
-                                SettingsRepository.CONNECTION_TYPE_GATEWAY
-                            } else {
-                                SettingsRepository.CONNECTION_TYPE_HTTP
-                            }
-
-                            // Save Gateway Settings
-                            runtime.setManualEnabled(true)
-                            runtime.setManualHost(gatewayHost.trim())
-                            runtime.setManualPort(gatewayPort.toIntOrNull() ?: 18789)
-                            runtime.setManualTls(gatewayTls)
-                            if (usePasswordAuth) {
-                                runtime.setGatewayToken("")
-                                runtime.setGatewayPassword(gatewayPassword.trim())
-                            } else {
-                                runtime.setGatewayToken(gatewayToken.trim())
-                                runtime.setGatewayPassword("")
-                            }
-
-                            // Save HTTP Settings
                             settings.httpUrl = httpInputUrl.trim()
                             settings.authToken = httpToken.trim()
                             settings.httpIgnoreSslErrors = httpIgnoreSslErrors
@@ -460,26 +373,19 @@ fun SettingsScreen(
                             settings.resumeLatestSession = resumeLatestSession
                             settings.wakeWordPreset = wakeWordPreset
                             settings.customWakeWord = customWakeWord
-                            settings.wakewordConnectionType = wakewordConnectionType
                             settings.speechSilenceTimeout = speechSilenceTimeout.toLong()
                             settings.speechLanguage = speechLanguage
                             settings.appLanguage = appLanguage
                             settings.thinkingSoundEnabled = thinkingSoundEnabled
                             applyAppLanguage(appLanguage)
 
-                            // Stop/Restart services
                             HotwordService.stop(context)
-
-                            if (settings.connectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
-                                runtime.connectManual()
-                            }
-
                             if (settings.hotwordEnabled) {
                                 HotwordService.start(context)
                             }
                             onSave()
                         },
-                        enabled = gatewayHost.isNotBlank() || httpInputUrl.isNotBlank()
+                        enabled = httpInputUrl.isNotBlank()
                     ) {
                         Text(stringResource(R.string.save_button))
                     }
@@ -494,16 +400,9 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-                // Show pairing required banner if needed
-                if (isPairingRequired && deviceId != null) {
-                    PairingRequiredCard(deviceId = deviceId)
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
-            // === UNIFIED CONNECTION SECTION ===
+            // === CONNECTION SECTION ===
             CollapsibleSection(
                 title = stringResource(R.string.connection),
-                subtitle = if (connectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY && nodeConnected) nodeStatus.ifBlank { stringResource(R.string.connected) } else "",
                 initiallyExpanded = true
             ) {
                 Card(
@@ -515,191 +414,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
 
-                        // Connection Configuration Tabs
-                        Text(stringResource(R.string.connection_settings), style = MaterialTheme.typography.labelLarge)
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        TabRow(
-                            selectedTabIndex = selectedTabIndex,
-                            modifier = Modifier.fillMaxWidth(),
-                            containerColor = Color.Transparent,
-                        ) {
-                            Tab(
-                                selected = selectedTabIndex == 0,
-                                onClick = { selectedTabIndex = 0 },
-                                text = { Text(stringResource(R.string.tab_gateway)) }
-                            )
-                            Tab(
-                                selected = selectedTabIndex == 1,
-                                onClick = { selectedTabIndex = 1 },
-                                text = { Text(stringResource(R.string.tab_http)) }
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        if (selectedTabIndex == 0) {
-                            // Setup Code quick-config (from `openclaw qr --setup-code-only`)
-                            OutlinedTextField(
-                                value = setupCode,
-                                onValueChange = {
-                                    setupCode = it
-                                    setupCodeApplied = false
-                                    setupCodeError = false
-                                },
-                                label = { Text(stringResource(R.string.setup_guide_setup_code_label)) },
-                                placeholder = { Text(stringResource(R.string.setup_guide_setup_code_hint)) },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                trailingIcon = {
-                                    if (setupCode.isNotBlank()) {
-                                        TextButton(
-                                            onClick = {
-                                                val decoded = GatewayConfigUtils.decodeGatewaySetupCode(setupCode)
-                                                if (decoded != null) {
-                                                    val parsed = GatewayConfigUtils.parseGatewayEndpoint(decoded.url)
-                                                    if (parsed != null) {
-                                                        gatewayHost = parsed.host
-                                                        gatewayPort = parsed.port.toString()
-                                                        gatewayTls = parsed.tls
-                                                        if (decoded.password != null) {
-                                                            usePasswordAuth = true
-                                                            gatewayPassword = decoded.password
-                                                        } else if (decoded.token != null) {
-                                                            usePasswordAuth = false
-                                                            gatewayToken = decoded.token
-                                                        }
-                                                        setupCodeApplied = true
-                                                        setupCodeError = false
-                                                        testResult = null
-                                                    } else {
-                                                        setupCodeError = true
-                                                    }
-                                                } else {
-                                                    setupCodeError = true
-                                                }
-                                            }
-                                        ) { Text(stringResource(R.string.apply)) }
-                                    }
-                                },
-                                isError = setupCodeError,
-                                supportingText = when {
-                                    setupCodeApplied -> { { Text(stringResource(R.string.setup_code_applied), color = MaterialTheme.colorScheme.primary) } }
-                                    setupCodeError -> { { Text(stringResource(R.string.setup_code_invalid_code), color = MaterialTheme.colorScheme.error) } }
-                                    else -> null
-                                }
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Text(stringResource(R.string.gateway_configuration), style = MaterialTheme.typography.titleSmall)
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedTextField(
-                                    value = gatewayHost,
-                                    onValueChange = { gatewayHost = it; testResult = null },
-                                    label = { Text(stringResource(R.string.gateway_host)) },
-                                    modifier = Modifier.weight(2f),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
-                                )
-                                OutlinedTextField(
-                                    value = gatewayPort,
-                                    onValueChange = { gatewayPort = it.filter { char -> char.isDigit() }; testResult = null },
-                                    label = { Text(stringResource(R.string.gateway_port)) },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable { usePasswordAuth = false; testResult = null }
-                                ) {
-                                    RadioButton(
-                                        selected = !usePasswordAuth,
-                                        onClick = { usePasswordAuth = false; testResult = null }
-                                    )
-                                    Text(stringResource(R.string.gateway_token))
-                                }
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable { usePasswordAuth = true; testResult = null }
-                                ) {
-                                    RadioButton(
-                                        selected = usePasswordAuth,
-                                        onClick = { usePasswordAuth = true; testResult = null }
-                                    )
-                                    Text(stringResource(R.string.gateway_password))
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            if (!usePasswordAuth) {
-                                OutlinedTextField(
-                                    value = gatewayToken,
-                                    onValueChange = { gatewayToken = it; testResult = null },
-                                    label = { Text(stringResource(R.string.gateway_token)) },
-                                    trailingIcon = {
-                                        IconButton(onClick = { showNodeToken = !showNodeToken }) {
-                                            Icon(
-                                                if (showNodeToken) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                contentDescription = null
-                                            )
-                                        }
-                                    },
-                                    visualTransformation = if (showNodeToken) VisualTransformation.None else PasswordVisualTransformation(),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
-                                )
-                            } else {
-                                OutlinedTextField(
-                                    value = gatewayPassword,
-                                    onValueChange = { gatewayPassword = it; testResult = null },
-                                    label = { Text(stringResource(R.string.gateway_password)) },
-                                    trailingIcon = {
-                                        IconButton(onClick = { showGatewayPassword = !showGatewayPassword }) {
-                                            Icon(
-                                                if (showGatewayPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                                contentDescription = null
-                                            )
-                                        }
-                                    },
-                                    visualTransformation = if (showGatewayPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(stringResource(R.string.gateway_use_tls), style = MaterialTheme.typography.bodyLarge)
-                                    Text(stringResource(R.string.gateway_use_tls_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                }
-                                Switch(
-                                    checked = gatewayTls,
-                                    onCheckedChange = { gatewayTls = it; testResult = null }
-                                )
-                            }
-                        } else if (selectedTabIndex == 1) {
-                            Text(stringResource(R.string.http_api_configuration), style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.http_api_configuration), style = MaterialTheme.typography.titleSmall)
                             Spacer(modifier = Modifier.height(8.dp))
                             
                             OutlinedTextField(
@@ -732,134 +447,19 @@ fun SettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                             )
-                        }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        
-                        // Gateway Specific Settings
-                        if (selectedTabIndex == 0) {
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // Foreground Service Toggle
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(stringResource(R.string.gateway_foreground_service), style = MaterialTheme.typography.bodyLarge)
-                                    Text(stringResource(R.string.gateway_foreground_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                }
-                                Switch(
-                                    checked = nodeForeground,
-                                    onCheckedChange = { enabled ->
-                                        runtime.setForeground(enabled)
-                                        if (enabled) NodeForegroundService.start(context) else NodeForegroundService.stop(context)
-                                    }
-                                )
-                            }
-                        }
-
-                        // HTTP Specific Settings
-                        if (selectedTabIndex == 1) {
-                            Text(
-                                text = stringResource(R.string.settings_legacy_desc),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 12.dp, top = 12.dp)
-                            )
-                            
                             // Default Agent
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                if (availableAgents.isNotEmpty()) {
-                            // Dropdown when agents are loaded
-                            ExposedDropdownMenuBox(
-                                expanded = showAgentMenu,
-                                onExpandedChange = { showAgentMenu = it }
-                            ) {
-                                val agentLabel = availableAgents.find { it.id == defaultAgentId }?.name ?: defaultAgentId
-                                OutlinedTextField(
-                                    value = agentLabel,
-                                    onValueChange = { defaultAgentId = it },
-                                    label = { Text(stringResource(R.string.default_agent_label)) },
-                                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                                    trailingIcon = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            if (isFetchingAgents) {
-                                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                            } else {
-                                                IconButton(onClick = {
-                                                    scope.launch {
-                                                        isFetchingAgents = true
-                                                        if (runtime.isConnected.value) {
-                                                            runtime.refreshAgentList()
-                                                        } else {
-                                                            Toast.makeText(context, context.getString(R.string.gateway_not_connected), Toast.LENGTH_SHORT).show()
-                                                        }
-                                                        isFetchingAgents = false
-                                                    }
-                                                }) {
-                                                    Icon(Icons.Default.Refresh, contentDescription = "Refresh Agents")
-                                                }
-                                            }
-                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showAgentMenu)
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth().menuAnchor()
-                                )
-                                ExposedDropdownMenu(
-                                    expanded = showAgentMenu,
-                                    onDismissRequest = { showAgentMenu = false }
-                                ) {
-                                    availableAgents.forEach { agent ->
-                                        DropdownMenuItem(
-                                            text = { Text(agent.name) },
-                                            onClick = {
-                                                defaultAgentId = agent.id
-                                                showAgentMenu = false
-                                            },
-                                            leadingIcon = {
-                                                if (defaultAgentId == agent.id) {
-                                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            // Text field fallback before connection or if no agents found
                             OutlinedTextField(
                                 value = defaultAgentId,
                                 onValueChange = { defaultAgentId = it },
                                 label = { Text(stringResource(R.string.default_agent_label)) },
                                 placeholder = { Text(stringResource(R.string.default_agent_hint)) },
                                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                                trailingIcon = {
-                                    if (isFetchingAgents) {
-                                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                    } else {
-                                        IconButton(onClick = {
-                                            scope.launch {
-                                                isFetchingAgents = true
-                                                if (runtime.isConnected.value) {
-                                                    runtime.refreshAgentList()
-                                                } else {
-                                                    Toast.makeText(context, context.getString(R.string.gateway_not_connected), Toast.LENGTH_SHORT).show()
-                                                }
-                                                isFetchingAgents = false
-                                            }
-                                        }) {
-                                            Icon(Icons.Default.Refresh, contentDescription = "Refresh Agents")
-                                        }
-                                    }
-                                },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                             )
-                        }
-                    }
 
                             Spacer(modifier = Modifier.height(12.dp))
 
@@ -901,7 +501,7 @@ fun SettingsScreen(
                             // Test Connection Button
                             Button(
                                 onClick = {
-                                    if (httpUrl.isBlank()) return@Button
+                                    if (httpInputUrl.isBlank()) return@Button
                                     scope.launch {
                                         try {
                                             isTesting = true
@@ -959,7 +559,7 @@ fun SettingsScreen(
                                     Text(testResult?.message ?: stringResource(R.string.test_connection_button))
                                 }
                             }
-                }
+
                         Spacer(modifier = Modifier.height(24.dp))
                     } // end Column
                 } // end Card
@@ -1369,29 +969,6 @@ fun SettingsScreen(
                             Switch(checked = resumeLatestSession, onCheckedChange = { resumeLatestSession = it })
                         }
 
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
-
-                        // Voice session connection type selector
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.wakeword_connection_type), style = MaterialTheme.typography.bodyLarge)
-                            Text(stringResource(R.string.wakeword_connection_type_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                listOf(
-                                    SettingsRepository.CONNECTION_TYPE_GATEWAY to stringResource(R.string.wakeword_use_gateway),
-                                    SettingsRepository.CONNECTION_TYPE_HTTP to stringResource(R.string.wakeword_use_http)
-                                ).forEach { (type, label) ->
-                                    FilterChip(
-                                        selected = wakewordConnectionType == type,
-                                        onClick = { wakewordConnectionType = type },
-                                        label = { Text(label) }
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -1562,9 +1139,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = {
-                            val openClawVersion = runtime.serverVersion.value
-                            Log.d("SettingsActivity", "Report Issue clicked. serverVersion: $openClawVersion")
-                            val systemInfo = SystemInfoProvider.getSystemInfoReport(context, settings, openClawVersion)
+                            val systemInfo = SystemInfoProvider.getSystemInfoReport(context, settings, null)
                             val body = "\n\n$systemInfo"
                             val uri = Uri.parse("https://github.com/yuga-hashimoto/openclaw-assistant/issues/new")
                                 .buildUpon()

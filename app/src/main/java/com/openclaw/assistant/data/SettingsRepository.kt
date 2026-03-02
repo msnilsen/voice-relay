@@ -204,7 +204,7 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_DEFAULT_AGENT_ID, "main") ?: "main"
         set(value) = prefs.edit().putString(KEY_DEFAULT_AGENT_ID, value).apply()
 
-    // Use NodeRuntime-backed chat pipeline (chat.send / chat history from gateway)
+    // Legacy: was used for gateway chat pipeline, now always false
     var useNodeChat: Boolean
         get() = prefs.getBoolean(KEY_USE_NODE_CHAT, false)
         set(value) = prefs.edit().putBoolean(KEY_USE_NODE_CHAT, value).apply()

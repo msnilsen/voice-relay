@@ -17,9 +17,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -31,8 +29,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.automirrored.filled.ScreenShare
-import androidx.compose.material.icons.automirrored.filled.StopScreenShare
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -57,17 +53,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.openclaw.assistant.data.SettingsRepository
 import com.openclaw.assistant.service.HotwordService
-import com.openclaw.assistant.service.NodeForegroundService
 import com.openclaw.assistant.service.OpenClawAssistantService
-import com.openclaw.assistant.ui.GatewayTrustDialog
 import com.openclaw.assistant.speech.TTSUtils
 import com.openclaw.assistant.speech.diagnostics.DiagnosticStatus
 import com.openclaw.assistant.speech.diagnostics.VoiceDiagnostic
 import com.openclaw.assistant.speech.diagnostics.VoiceDiagnostics
 import com.openclaw.assistant.ui.components.CollapsibleSection
-import com.openclaw.assistant.ui.components.ConnectionState
-import com.openclaw.assistant.ui.components.PairingRequiredCard
-import com.openclaw.assistant.ui.components.StatusIndicator
 import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
 import com.openclaw.assistant.ui.SetupGuideScreen
 
@@ -90,33 +81,11 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private var missingPermissions by mutableStateOf<List<PermissionInfo>>(emptyList())
     private var allPermissionsStatus by mutableStateOf<List<PermissionStatusInfo>>(emptyList())
     private var pendingHotwordStart = false
-    
-    private lateinit var screenCaptureRequester: ScreenCaptureRequester
-    private lateinit var permissionRequester: PermissionRequester
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val recordAudioGranted = permissions[Manifest.permission.RECORD_AUDIO] ?: false
-        val cameraGranted = permissions[Manifest.permission.CAMERA] ?: false
-        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
-        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
-        val smsGranted = permissions[Manifest.permission.SEND_SMS] ?: false
-
-        // Auto-enable capabilities when permission is newly granted
-        val runtime = (applicationContext as OpenClawApplication).nodeRuntime
-        if (cameraGranted) {
-            runtime.setCameraEnabled(true)
-        }
-        if (smsGranted) {
-            runtime.setSmsEnabled(true)
-        }
-        if (coarseGranted) {
-            runtime.setLocationMode(com.openclaw.assistant.LocationMode.WhileUsing)
-            runtime.setLocationPreciseEnabled(fineGranted)
-        } else if (fineGranted) {
-            runtime.setLocationPreciseEnabled(true)
-        }
 
         if (pendingHotwordStart) {
             pendingHotwordStart = false
@@ -132,9 +101,8 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 }
             }
         } else {
-            val allGranted = permissions.values.all { it }
-            if (!allGranted) {
-                // Toast.makeText(this, getString(R.string.permissions_required), Toast.LENGTH_SHORT).show()
+            if (!permissions.values.all { it }) {
+                // Some permissions were denied
             }
         }
         refreshMissingPermissions()
@@ -162,15 +130,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = SettingsRepository.getInstance(this)
-        
-        screenCaptureRequester = ScreenCaptureRequester(this)
-        permissionRequester = PermissionRequester(this)
-        
-        val runtime = (applicationContext as OpenClawApplication).nodeRuntime
-        runtime.screenRecorder.attachScreenCaptureRequester(screenCaptureRequester)
-        runtime.screenRecorder.attachPermissionRequester(permissionRequester)
-        runtime.attachPermissionRequester(permissionRequester)
-        
+
         initializeTTS()
         // Removed checkPermissions() from onCreate to allow SetupGuideScreen to handle it
         refreshMissingPermissions()
@@ -267,9 +227,6 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private fun refreshAllPermissionsStatus() {
         val list = mutableListOf<PermissionStatusInfo>()
         list.add(PermissionStatusInfo(getString(R.string.permission_record_audio), ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED))
-        list.add(PermissionStatusInfo(getString(R.string.permission_camera), ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED))
-        list.add(PermissionStatusInfo(getString(R.string.permission_location_fine), ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED))
-        list.add(PermissionStatusInfo(getString(R.string.permission_location_coarse), ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             list.add(PermissionStatusInfo(getString(R.string.permission_notifications), ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED))
         }
@@ -290,14 +247,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     fun toggleHotwordService(enabled: Boolean) {
         if (enabled) {
-            // Check that a backend connection is configured before enabling wakeword.
-            // The voice interaction session requires gateway or HTTP to communicate with the AI.
-            val runtime = (applicationContext as OpenClawApplication).nodeRuntime
-            val isConnectionConfigured = if (settings.connectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
-                runtime.manualHost.value.isNotBlank()
-            } else {
-                settings.httpUrl.isNotBlank()
-            }
+            val isConnectionConfigured = settings.httpUrl.isNotBlank()
             if (!isConnectionConfigured) {
                 Toast.makeText(this, getString(R.string.wakeword_requires_connection_error), Toast.LENGTH_LONG).show()
                 return
@@ -409,36 +359,13 @@ fun MainScreen(
     onOpenAppSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val runtime = remember(context.applicationContext) {
-        (context.applicationContext as OpenClawApplication).nodeRuntime
-    }
     var isConfigured by remember { mutableStateOf(settings.isConfigured()) }
     var hotwordEnabled by remember { mutableStateOf(settings.hotwordEnabled) }
     val displayWakeWord = settings.getWakeWordDisplayName()
     var isAssistantSet by remember { mutableStateOf((context as? MainActivity)?.isAssistantActive() ?: false) }
-    val nodeConnected by runtime.isConnected.collectAsState()
-    val nodeStatusText by runtime.statusText.collectAsState()
     var showTroubleshooting by rememberSaveable { mutableStateOf(false) }
     var showHowToUse by rememberSaveable { mutableStateOf(false) }
-    var showLocationInfo by rememberSaveable { mutableStateOf(false) }
-    
-    var showScreenCaptureDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val smsEnabled by runtime.smsEnabled.collectAsState()
-    val screenRecordActive by runtime.screenRecordActive.collectAsState()
-    val lastCapabilityError by runtime.lastCapabilityError.collectAsState()
-    LaunchedEffect(lastCapabilityError) {
-        val err = lastCapabilityError ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(err)
-        runtime.clearCapabilityError()
-    }
-    // Permission error observation
-    val missingScopeError by runtime.missingScopeError.collectAsState()
-    val isPairingRequired by runtime.isPairingRequired.collectAsState()
-    val isOperatorOffline by runtime.isOperatorOffline.collectAsState()
-    val deviceId = runtime.deviceId
-    val displayName by runtime.displayName.collectAsState()
-    val pendingGatewayTrust by runtime.pendingGatewayTrust.collectAsState()
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -513,160 +440,48 @@ fun MainScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (pendingGatewayTrust != null) {
-                GatewayTrustDialog(
-                    prompt = pendingGatewayTrust!!,
-                    onAccept = { runtime.acceptGatewayTrustPrompt() },
-                    onDecline = { runtime.declineGatewayTrustPrompt() }
+            // Webhook configuration status
+            val webhookConfigured = settings.httpUrl.isNotBlank()
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (webhookConfigured) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                    contentColor = if (webhookConfigured) Color(0xFF1B5E20) else Color(0xFFB71C1C)
                 )
-            }
-            // Show alert if missing scope error is present
-            if (missingScopeError != null) {
-                MissingScopeCard(error = missingScopeError!!, onClick = onOpenSettings)
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Show pairing required banner
-            if (isPairingRequired && deviceId != null) {
-                PairingRequiredCard(deviceId = deviceId, displayName = displayName)
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Show operator offline warning (node connected but operator not authorized)
-            if (isOperatorOffline && deviceId != null) {
-                OperatorOfflineCard(deviceId = deviceId, displayName = displayName)
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // === SYSTEM STATUS DASHBOARD ===
-            val displayStatusText = when (nodeStatusText) {
-                "Operator Online (Node Offline)" -> stringResource(R.string.status_operator_online_node_offline)
-                "Node Online (Operator Offline)" -> stringResource(R.string.status_node_online_operator_offline)
-                "Offline" -> stringResource(R.string.status_offline)
-                else -> nodeStatusText
-            }
-            
-            SystemStatusCard(
-                connected = nodeConnected,
-                statusText = displayStatusText,
-                onConnect = { runtime.connectManual() },
-                onDisconnect = { runtime.disconnect() },
-                onOpenSettings = onOpenSettings
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // === CAPABILITIES CONTROLS ===
-            Text(
-                text = stringResource(R.string.permissions_for_openclaw_title),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            val cameraEnabled by runtime.cameraEnabled.collectAsState()
-            val locationMode by runtime.locationMode.collectAsState()
-            val locationPrecise by runtime.locationPreciseEnabled.collectAsState()
-            
-            // === CAPABILITIES: all 4 in one row ===
-            val hasTelephony = remember { runtime.sms.hasTelephonyFeature() }
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Camera Toggle
-                CapabilityCard(
-                    icon = Icons.Default.PhotoCamera,
-                    label = stringResource(R.string.capability_camera),
-                    isActive = cameraEnabled,
-                    onClick = {
-                        if (!cameraEnabled) {
-                            val granted = ContextCompat.checkSelfPermission(
-                                context, Manifest.permission.CAMERA
-                            ) == PackageManager.PERMISSION_GRANTED
-                            if (granted) {
-                                runtime.setCameraEnabled(true)
-                            } else {
-                                onRequestPermissions(listOf(Manifest.permission.CAMERA))
-                            }
-                        } else {
-                            runtime.setCameraEnabled(false)
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Location Toggle (ON/OFF)
-                val locationStatusText = when {
-                    locationMode == LocationMode.Off -> stringResource(R.string.location_off)
-                    locationPrecise -> stringResource(R.string.location_precise)
-                    else -> stringResource(R.string.location_coarse)
-                }
-                CapabilityCard(
-                    icon = Icons.Default.LocationOn,
-                    label = stringResource(R.string.capability_location),
-                    isActive = locationMode != LocationMode.Off,
-                    statusText = locationStatusText,
-                    onClick = {
-                        if (locationMode == LocationMode.Off) {
-                            val coarseGranted = ContextCompat.checkSelfPermission(
-                                context, Manifest.permission.ACCESS_COARSE_LOCATION
-                            ) == PackageManager.PERMISSION_GRANTED
-                            val fineGranted = ContextCompat.checkSelfPermission(
-                                context, Manifest.permission.ACCESS_FINE_LOCATION
-                            ) == PackageManager.PERMISSION_GRANTED
-                            
-                            if (coarseGranted || fineGranted) {
-                                runtime.setLocationMode(LocationMode.WhileUsing)
-                                runtime.setLocationPreciseEnabled(fineGranted)
-                            } else {
-                                onRequestPermissions(listOf(
-                                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    Manifest.permission.ACCESS_FINE_LOCATION
-                                ))
-                            }
-                        } else {
-                            runtime.setLocationMode(LocationMode.Off)
-                        }
-                    },
-                    onLongClick = { showLocationInfo = true },
-                    modifier = Modifier.weight(1f)
-                )
-
-                // SMS Toggle
-                if (hasTelephony) {
-                    CapabilityCard(
-                        icon = Icons.Default.Sms,
-                        label = stringResource(R.string.capability_sms),
-                        isActive = smsEnabled,
-                        onClick = {
-                            if (smsEnabled) {
-                                runtime.setSmsEnabled(false)
-                            } else {
-                                val granted = ContextCompat.checkSelfPermission(
-                                    context, Manifest.permission.SEND_SMS
-                                ) == PackageManager.PERMISSION_GRANTED
-                                if (granted) {
-                                    runtime.setSmsEnabled(true)
-                                } else {
-                                    onRequestPermissions(listOf(Manifest.permission.SEND_SMS))
-                                }
-                            }
-                        },
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(if (webhookConfigured) Color(0xFF4CAF50) else Color(0xFFF44336))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (webhookConfigured) stringResource(R.string.webhook_configured) else stringResource(R.string.webhook_not_configured),
+                        fontSize = 13.sp,
+                        color = (if (webhookConfigured) Color(0xFF1B5E20) else Color(0xFFB71C1C)).copy(alpha = 0.8f),
                         modifier = Modifier.weight(1f)
                     )
+                    IconButton(onClick = onOpenSettings, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = (if (webhookConfigured) Color(0xFF1B5E20) else Color(0xFFB71C1C)).copy(alpha = 0.6f))
+                    }
                 }
-
-                // Screen Capture Toggle
-                CapabilityCard(
-                    icon = if (screenRecordActive) Icons.AutoMirrored.Filled.StopScreenShare else Icons.AutoMirrored.Filled.ScreenShare,
-                    label = stringResource(R.string.capability_screen),
-                    isActive = screenRecordActive,
-                    onClick = { showScreenCaptureDialog = true },
-                    modifier = Modifier.weight(1f)
-                )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (missingPermissions.isNotEmpty()) {
                 PermissionStatusCard(
@@ -741,232 +556,15 @@ fun MainScreen(
                 Text(stringResource(R.string.open_chat), fontSize = 18.sp, fontWeight = FontWeight.Medium)
             }
 
-            // Legacy warning if ONLY legacy is configured and fails
-            if (!isConfigured && !nodeConnected) {
+            if (!isConfigured) {
                 Spacer(modifier = Modifier.height(24.dp))
                 WarningCard(message = stringResource(R.string.setup_required_hint), onClick = onOpenSettings)
             }
         }
     }
 
-    if (showScreenCaptureDialog) {
-        AlertDialog(
-            onDismissRequest = { showScreenCaptureDialog = false },
-            title = { Text(stringResource(R.string.screen_capture_title)) },
-            text = { Text(stringResource(R.string.screen_capture_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showScreenCaptureDialog = false
-                    if (screenRecordActive) {
-                        runtime.setScreenRecordActive(false)
-                    } else {
-                        runtime.setScreenRecordActive(true)
-                    }
-                }) {
-                    Text(stringResource(if (screenRecordActive) R.string.stop else R.string.start))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showScreenCaptureDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
-
     if (showTroubleshooting) TroubleshootingDialog(onDismiss = { showTroubleshooting = false })
     if (showHowToUse) HowToUseDialog(displayWakeWord = displayWakeWord, onDismiss = { showHowToUse = false })
-    if (showLocationInfo) {
-        AlertDialog(
-            onDismissRequest = { showLocationInfo = false },
-            title = { Text(stringResource(R.string.location_info_title)) },
-            text = { Text(stringResource(R.string.location_info_message)) },
-            confirmButton = {
-                TextButton(onClick = { showLocationInfo = false }) {
-                    Text(stringResource(R.string.got_it))
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun OperatorOfflineCard(deviceId: String, displayName: String = "") {
-    val context = LocalContext.current
-    val command = "openclaw devices approve $deviceId"
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.operator_offline_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.operator_offline_message),
-                style = MaterialTheme.typography.bodySmall
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(
-                onClick = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clip = ClipData.newPlainText("Command", command)
-                    clipboard.setPrimaryClip(clip)
-                    Toast.makeText(context, context.getString(R.string.operator_offline_copied), Toast.LENGTH_SHORT).show()
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = stringResource(R.string.operator_offline_copy), fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-fun SystemStatusCard(
-    connected: Boolean,
-    statusText: String,
-    onConnect: () -> Unit,
-    onDisconnect: () -> Unit,
-    onOpenSettings: () -> Unit
-) {
-    val backgroundColor = if (connected) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
-    val contentColor = if (connected) Color(0xFF1B5E20) else Color(0xFFB71C1C)
-    val statusLabelColor = if (connected) Color(0xFF2E7D32) else Color(0xFFC62828)
-    val statusDotColor = if (connected) Color(0xFF4CAF50) else Color(0xFFF44336)
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor,
-            contentColor = contentColor
-        )
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(statusDotColor)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.app_name),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = statusText,
-                    fontSize = 13.sp,
-                    color = contentColor.copy(alpha = 0.8f),
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = onOpenSettings, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = contentColor.copy(alpha = 0.6f))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (connected) {
-                    OutlinedButton(
-                        onClick = onDisconnect,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = contentColor,
-                            containerColor = Color.Transparent
-                        ),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, contentColor.copy(alpha = 0.5f))
-                    ) {
-                        Text(stringResource(R.string.disconnect))
-                    }
-                } else {
-                    Button(
-                        onClick = onConnect,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = contentColor,
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text(stringResource(R.string.connect))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-@OptIn(ExperimentalFoundationApi::class)
-fun CapabilityCard(
-    icon: ImageVector,
-    label: String,
-    isActive: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    statusText: String? = null,
-    onLongClick: (() -> Unit)? = null
-) {
-    Card(
-        modifier = modifier
-            .height(72.dp)
-            .then(
-                if (onLongClick != null) {
-                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
-                } else {
-                    Modifier.clickable(onClick = onClick)
-                }
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(8.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = label,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (statusText != null) {
-                Text(
-                    text = statusText,
-                    fontSize = 9.sp,
-                    color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
-                )
-            }
-        }
-    }
 }
 
 @Composable

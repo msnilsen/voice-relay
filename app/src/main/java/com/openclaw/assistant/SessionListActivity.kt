@@ -19,19 +19,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -39,7 +34,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -59,8 +53,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.openclaw.assistant.data.local.entity.SessionEntity
-import com.openclaw.assistant.gateway.AgentInfo
 import com.openclaw.assistant.ui.theme.OpenClawAssistantTheme
 
 class SessionListActivity : ComponentActivity() {
@@ -86,36 +78,27 @@ class SessionListActivity : ComponentActivity() {
         setContent {
             OpenClawAssistantTheme {
                 val sessions by viewModel.allSessions.collectAsState()
-                val agentListResult by viewModel.agentList.collectAsState()
-                val agents = agentListResult?.agents ?: emptyList()
-                val defaultAgentId = agentListResult?.defaultId ?: "main"
                 SessionListScreen(
                     sessions = sessions,
-                    isGatewayConfigured = viewModel.isGatewayConfigured,
-                    isHttpConfigured = viewModel.isHttpConfigured,
-                    agents = agents,
-                    defaultAgentId = defaultAgentId,
                     onBack = { finish() },
                     onSessionClick = { session ->
-                        viewModel.setUseNodeChat(session.isGateway)
                         startActivity(Intent(this, ChatActivity::class.java).apply {
                             putExtra(ChatActivity.EXTRA_SESSION_ID, session.id)
                         })
                     },
-                    onCreateSession = { name, isGateway, agentId ->
-                        viewModel.setUseNodeChat(isGateway)
-                        viewModel.createSession(name, isGateway, agentId) { sessionId, createdAsGateway ->
+                    onCreateSession = { name ->
+                        viewModel.createSession(name) { sessionId ->
                             startActivity(Intent(this, ChatActivity::class.java).apply {
                                 putExtra(ChatActivity.EXTRA_SESSION_ID, sessionId)
                                 putExtra(ChatActivity.EXTRA_SESSION_TITLE, name)
                             })
                         }
                     },
-                    onDeleteSession = { sessionId, isGateway ->
-                        viewModel.deleteSession(sessionId, isGateway)
+                    onDeleteSession = { sessionId ->
+                        viewModel.deleteSession(sessionId)
                     },
-                    onRenameSession = { sessionId, newName, isGateway ->
-                        viewModel.renameSession(sessionId, newName, isGateway)
+                    onRenameSession = { sessionId, newName ->
+                        viewModel.renameSession(sessionId, newName)
                     }
                 )
             }
@@ -132,23 +115,16 @@ class SessionListActivity : ComponentActivity() {
 @Composable
 fun SessionListScreen(
     sessions: List<SessionUiModel>,
-    isGatewayConfigured: Boolean,
-    isHttpConfigured: Boolean,
-    agents: List<AgentInfo> = emptyList(),
-    defaultAgentId: String = "main",
     onBack: () -> Unit,
     onSessionClick: (SessionUiModel) -> Unit,
-    onCreateSession: (String, Boolean, String?) -> Unit,
-    onDeleteSession: (String, Boolean) -> Unit,
-    onRenameSession: (String, String, Boolean) -> Unit = { _, _, _ -> }
+    onCreateSession: (String) -> Unit,
+    onDeleteSession: (String) -> Unit,
+    onRenameSession: (String, String) -> Unit = { _, _ -> }
 ) {
     var sessionToDelete by remember { mutableStateOf<SessionUiModel?>(null) }
     var sessionToRename by remember { mutableStateOf<SessionUiModel?>(null) }
     var sessionActionTarget by remember { mutableStateOf<SessionUiModel?>(null) }
-    var showTypeSelectionDialog by remember { mutableStateOf(false) }
     var showNameInputDialog by remember { mutableStateOf(false) }
-    var showGatewayCreateDialog by remember { mutableStateOf(false) }
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     val listState = rememberLazyListState()
     var scrollTrigger by remember { mutableIntStateOf(0) }
@@ -185,16 +161,7 @@ fun SessionListScreen(
         },
         floatingActionButton = {
             val newSessionName = stringResource(R.string.new_chat)
-            FloatingActionButton(onClick = { 
-                if (isGatewayConfigured && isHttpConfigured) {
-                    showTypeSelectionDialog = true
-                } else if (isHttpConfigured && !isGatewayConfigured) {
-                    showNameInputDialog = true
-                } else {
-                    // Gateway only
-                    showGatewayCreateDialog = true
-                }
-            }) {
+            FloatingActionButton(onClick = { showNameInputDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = newSessionName)
             }
         }
@@ -232,121 +199,6 @@ fun SessionListScreen(
         }
     }
 
-    // Type selection dialog (Gateway vs HTTP)
-    if (showTypeSelectionDialog) {
-        AlertDialog(
-            onDismissRequest = { showTypeSelectionDialog = false },
-            title = { Text(stringResource(R.string.select_chat_type)) },
-            text = { Text(stringResource(R.string.select_chat_type)) },
-            dismissButton = {
-                TextButton(onClick = {
-                    showTypeSelectionDialog = false
-                    showNameInputDialog = true
-                }) {
-                    Text(stringResource(R.string.chat_type_http))
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showTypeSelectionDialog = false
-                    showGatewayCreateDialog = true
-                }) {
-                    Text(stringResource(R.string.chat_type_gateway))
-                }
-            }
-        )
-    }
-
-    // Gateway creation dialog with name + agent selection
-    if (showGatewayCreateDialog) {
-        var inputName by remember { mutableStateOf("") }
-        var selectedAgentId by remember { mutableStateOf<String?>(null) }
-        var agentDropdownExpanded by remember { mutableStateOf(false) }
-
-        val effectiveAgentId = selectedAgentId ?: defaultAgentId
-        val selectedAgentName = agents.find { it.id == effectiveAgentId }?.name
-            ?: if (effectiveAgentId == "main" || effectiveAgentId.isBlank()) "Default" else effectiveAgentId
-
-        AlertDialog(
-            onDismissRequest = { showGatewayCreateDialog = false },
-            title = { Text(stringResource(R.string.new_chat)) },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = inputName,
-                        onValueChange = { inputName = it },
-                        label = { Text(stringResource(R.string.session_name_optional)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (agents.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Agent",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box {
-                            Surface(
-                                onClick = { agentDropdownExpanded = true },
-                                shape = MaterialTheme.shapes.small,
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = selectedAgentName,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Icon(
-                                        imageVector = Icons.Default.ArrowDropDown,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                            DropdownMenu(
-                                expanded = agentDropdownExpanded,
-                                onDismissRequest = { agentDropdownExpanded = false }
-                            ) {
-                                agents.forEach { agent ->
-                                    DropdownMenuItem(
-                                        text = { Text(agent.name) },
-                                        onClick = {
-                                            selectedAgentId = agent.id
-                                            agentDropdownExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showGatewayCreateDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showGatewayCreateDialog = false
-                    val ts = java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-                    val finalName = if (inputName.isNotBlank()) inputName else context.getString(R.string.chat_session_title_format, ts)
-                    val agentId = selectedAgentId ?: if (defaultAgentId != "main" && defaultAgentId.isNotBlank()) defaultAgentId else null
-                    onCreateSession(finalName, true, agentId)
-                }) {
-                    Text(stringResource(R.string.create))
-                }
-            }
-        )
-    }
-
     // HTTP name input dialog
     if (showNameInputDialog) {
         var inputName by remember { mutableStateOf("") }
@@ -376,15 +228,13 @@ fun SessionListScreen(
                 TextButton(onClick = {
                     showNameInputDialog = false
                     val finalName = if (inputName.isNotBlank()) inputName else "New Conversation"
-                    onCreateSession(finalName, false, null)
+                    onCreateSession(finalName)
                 }) {
                     Text(stringResource(R.string.create))
                 }
             }
         )
     }
-
-
 
     // Long-press action menu: Rename / Delete
     sessionActionTarget?.let { session ->
@@ -430,7 +280,7 @@ fun SessionListScreen(
                     onClick = {
                         val name = renameInput.trim()
                         if (name.isNotBlank()) {
-                            onRenameSession(session.id, name, session.isGateway)
+                            onRenameSession(session.id, name)
                         }
                         sessionToRename = null
                     },
@@ -456,7 +306,7 @@ fun SessionListScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    onDeleteSession(session.id, session.isGateway)
+                    onDeleteSession(session.id)
                     sessionToDelete = null
                 }) {
                     Text(stringResource(R.string.delete))
@@ -504,21 +354,8 @@ private fun SessionListItem(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        color = if (session.isGateway) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.tertiaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            text = if (session.isGateway) stringResource(R.string.tab_gateway) else stringResource(R.string.tab_http),
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                            color = if (session.isGateway) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                    }
                 }
             }
         }
     }
 }
-

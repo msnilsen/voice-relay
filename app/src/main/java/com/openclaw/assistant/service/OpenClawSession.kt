@@ -39,7 +39,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.openclaw.assistant.R
-import com.openclaw.assistant.OpenClawApplication
 import com.openclaw.assistant.data.SettingsRepository
 import com.openclaw.assistant.api.RequestFormat
 import com.openclaw.assistant.api.WebhookClient
@@ -211,56 +210,31 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         sendPauseBroadcast()
         
         // SESSION MANAGEMENT
-        if (settings.wakewordConnectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
-            // Gateway mode: manage session on the gateway side, not in local DB
-            val nodeRuntime = (context.applicationContext as OpenClawApplication).nodeRuntime
-            if (!settings.resumeLatestSession) {
-                // Start a fresh gateway session with a human-readable label
-                val newKey = java.util.UUID.randomUUID().toString()
-                val timeStr = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-                val label = String.format(context.getString(R.string.default_session_title_format), timeStr)
-                nodeRuntime.switchChatSession(newKey)
-                scope.launch { nodeRuntime.patchChatSession(newKey, label) }
-            }
-            // resumeLatestSession ON → keep the current active gateway session as-is
-        } else {
-            scope.launch {
-                try {
-                    val latestSession = if (settings.resumeLatestSession) chatRepository.getLatestSession() else null
-                    if (latestSession != null) {
-                        currentSessionId = latestSession.id
-                        Log.d(TAG, "Resuming latest session: $currentSessionId")
-                    } else {
-                        currentSessionId = chatRepository.createSession(title = String.format(context.getString(R.string.default_session_title_format), java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())))
-                        Log.d(TAG, "Created new session: $currentSessionId")
-                    }
-
-                    // Store this ID in settings so ChatActivity and API calls use it
-                    currentSessionId?.let { settings.sessionId = it }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to handle session", e)
-                    FirebaseCrashlytics.getInstance().recordException(e)
+        scope.launch {
+            try {
+                val latestSession = if (settings.resumeLatestSession) chatRepository.getLatestSession() else null
+                if (latestSession != null) {
+                    currentSessionId = latestSession.id
+                    Log.d(TAG, "Resuming latest session: $currentSessionId")
+                } else {
+                    currentSessionId = chatRepository.createSession(title = String.format(context.getString(R.string.default_session_title_format), java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())))
+                    Log.d(TAG, "Created new session: $currentSessionId")
                 }
+
+                // Store this ID in settings so ChatActivity and API calls use it
+                currentSessionId?.let { settings.sessionId = it }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to handle session", e)
+                FirebaseCrashlytics.getInstance().recordException(e)
             }
         }
-        
+
         // Check settings
         if (!settings.isConfigured()) {
             currentState.value = AssistantState.ERROR
             errorMessage.value = context.getString(R.string.error_config_required)
             displayText.value = context.getString(R.string.config_required)
             return
-        }
-
-        // For Gateway mode, fail fast if the gateway is not healthy
-        if (settings.wakewordConnectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
-            val nodeRuntime = (context.applicationContext as OpenClawApplication).nodeRuntime
-            if (!nodeRuntime.chatHealthOk.value) {
-                currentState.value = AssistantState.ERROR
-                errorMessage.value = context.getString(R.string.error_gateway_not_connected)
-                displayText.value = context.getString(R.string.config_required)
-                return
-            }
         }
 
         // Start speech recognition
@@ -483,63 +457,10 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         displayText.value = ""
 
         scope.launch {
-            // Save user message to local DB only for HTTP mode
-            if (settings.wakewordConnectionType != SettingsRepository.CONNECTION_TYPE_GATEWAY) {
-                currentSessionId?.let { sessionId ->
-                    chatRepository.addMessage(sessionId, message, isUser = true)
-                }
+            currentSessionId?.let { sessionId ->
+                chatRepository.addMessage(sessionId, message, isUser = true)
             }
-
-            if (settings.wakewordConnectionType == SettingsRepository.CONNECTION_TYPE_GATEWAY) {
-                sendViaGateway(message)
-            } else {
-                sendViaHttp(message)
-            }
-        }
-    }
-
-    private suspend fun sendViaGateway(message: String) {
-        val nodeRuntime = (context.applicationContext as OpenClawApplication).nodeRuntime
-        if (!nodeRuntime.chatHealthOk.value) {
-            stopThinkingSound()
-            currentState.value = AssistantState.ERROR
-            errorMessage.value = context.getString(R.string.error_gateway_not_connected)
-            return
-        }
-
-        try {
-            val assistantCountBefore = nodeRuntime.chatMessages.value.count { it.role == "assistant" }
-
-            nodeRuntime.sendChat(
-                message = message,
-                thinking = "low",
-                attachments = emptyList()
-            )
-
-            // Wait for a new complete assistant response (timeout 60s).
-            // chatMessages only adds a message when the full response is committed,
-            // so watching it avoids both the pendingRunCount==0 early-fire issue
-            // and streaming partial-text races.
-            val responseText = withTimeoutOrNull(60_000L) {
-                nodeRuntime.chatMessages
-                    .first { messages -> messages.count { it.role == "assistant" } > assistantCountBefore }
-                    .lastOrNull { it.role == "assistant" }
-                    ?.content?.firstOrNull { it.type == "text" }?.text
-            }
-
-            if (responseText != null) {
-                displayText.value = responseText
-                handleResponseReceived(responseText)
-            } else {
-                stopThinkingSound()
-                currentState.value = AssistantState.ERROR
-                errorMessage.value = context.getString(R.string.error_no_response)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Gateway error", e)
-            stopThinkingSound()
-            currentState.value = AssistantState.ERROR
-            errorMessage.value = e.message ?: context.getString(R.string.error_network)
+            sendViaHttp(message)
         }
     }
 
@@ -581,12 +502,8 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     }
 
     private suspend fun handleResponseReceived(responseText: String) {
-
-        // Save AI response to local DB only for HTTP mode
-        if (settings.wakewordConnectionType != SettingsRepository.CONNECTION_TYPE_GATEWAY) {
-            currentSessionId?.let { sessionId ->
-                chatRepository.addMessage(sessionId, responseText, isUser = false)
-            }
+        currentSessionId?.let { sessionId ->
+            chatRepository.addMessage(sessionId, responseText, isUser = false)
         }
 
         if (settings.ttsEnabled) {
@@ -699,7 +616,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "OpenClawAssistant::SessionWakeLock"
+            "VoiceRelay::SessionWakeLock"
         ).apply {
             acquire(10 * 60 * 1000L) // 10 min max to prevent leak
         }

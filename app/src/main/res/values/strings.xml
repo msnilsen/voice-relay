@@ -58,6 +58,8 @@
     <string name="preparing_speech">読み込み中…</string>
     <string name="ready">Ready</string>
     <string name="error_no_webhook">Please configure HTTP connection</string>
+    <string name="webhook_configured">Webhook configured</string>
+    <string name="webhook_not_configured">Webhook not configured</string>
 
     <string name="error_speech">Speech recognition error</string>
     
@@ -450,10 +452,11 @@
     <string name="setup_guide_title">Voice Relay\nSetup</string>
     <string name="setup_guide_step_format">Step %1$d of %2$d</string>
     <string name="setup_guide_welcome_title">What You Get</string>
-    <string name="setup_guide_welcome_bullet_1">Control the gateway and operator chat from one mobile surface.</string>
-    <string name="setup_guide_welcome_bullet_2">Connect with setup code and recover pairing with CLI commands.</string>
-    <string name="setup_guide_welcome_bullet_3">Enable only the permissions and capabilities you want.</string>
-    <string name="setup_guide_welcome_bullet_4">Finish with a real connection check before entering the app.</string>
+    <string name="setup_guide_welcome_bullet_1">Say a wake word to send voice commands to your server.</string>
+    <string name="setup_guide_welcome_bullet_2">Configure your webhook URL to connect to any backend.</string>
+    <string name="setup_guide_welcome_bullet_3">Grant microphone permission for voice activation.</string>
+    <string name="setup_guide_welcome_bullet_4">Test the connection before entering the app.</string>
+    <string name="setup_guide_test_connection_desc">Test your webhook connection to make sure everything is working.</string>
     <string name="setup_guide_connection_title">Gateway Connection</string>
     <string name="setup_guide_connection_guide_title">Get setup code + gateway URL</string>
     <string name="setup_guide_connection_guide_cmd_1">Run these on the gateway host:</string>
@@ -492,7 +495,6 @@
     <string name="setup_guide_auth_none">None</string>
     <string name="setup_guide_gateway_label">Gateway</string>
     <string name="setup_guide_auth_label">Auth</string>
-    <string name="setup_guide_test_connection_desc">Press Test Connection to verify gateway reachability.</string>
     <string name="setup_guide_connected_to">Connected to %s</string>
     <string name="setup_guide_pairing_required">Pairing Required</string>
     <string name="setup_guide_pairing_run_on_host">Run these on the gateway host:</string>
