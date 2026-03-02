@@ -55,9 +55,9 @@ fun SetupGuideScreen(
 ) {
     var currentStep by rememberSaveable { mutableStateOf(SetupStep.Welcome) }
 
-    // UI State for Connection step
     var webhookUrl by rememberSaveable { mutableStateOf(settings.httpUrl) }
     var authToken by rememberSaveable { mutableStateOf(settings.authToken) }
+    var requestFormat by rememberSaveable { mutableStateOf(settings.requestFormat) }
 
     val totalSteps = SetupStep.entries.size
 
@@ -106,11 +106,14 @@ fun SetupGuideScreen(
                 SetupStep.Connection -> ConnectionStep(
                     webhookUrl = webhookUrl,
                     authToken = authToken,
+                    requestFormat = requestFormat,
                     onWebhookUrlChange = { webhookUrl = it },
                     onAuthTokenChange = { authToken = it },
+                    onRequestFormatChange = { requestFormat = it },
                     onNext = {
                         settings.httpUrl = webhookUrl.trim()
                         settings.authToken = authToken.trim()
+                        settings.requestFormat = requestFormat
                         currentStep = SetupStep.Permissions
                     }
                 )
@@ -188,8 +191,10 @@ private fun BulletPoint(text: String) {
 private fun ConnectionStep(
     webhookUrl: String,
     authToken: String,
+    requestFormat: String,
     onWebhookUrlChange: (String) -> Unit,
     onAuthTokenChange: (String) -> Unit,
+    onRequestFormatChange: (String) -> Unit,
     onNext: () -> Unit
 ) {
     Column {
@@ -220,13 +225,45 @@ private fun ConnectionStep(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        val canContinue = webhookUrl.isNotBlank()
+        Text(
+            text = stringResource(R.string.request_format_label),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        val isSimple = requestFormat == SettingsRepository.REQUEST_FORMAT_SIMPLE
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = isSimple,
+                onClick = { onRequestFormatChange(SettingsRepository.REQUEST_FORMAT_SIMPLE) },
+                label = { Text(stringResource(R.string.request_format_simple)) },
+                modifier = Modifier.weight(1f)
+            )
+            FilterChip(
+                selected = !isSimple,
+                onClick = { onRequestFormatChange(SettingsRepository.REQUEST_FORMAT_OPENAI) },
+                label = { Text(stringResource(R.string.request_format_openai)) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = if (isSimple) stringResource(R.string.request_format_simple_desc)
+                   else stringResource(R.string.request_format_openai_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
 
         Button(
             onClick = onNext,
-            enabled = canContinue,
+            enabled = webhookUrl.isNotBlank(),
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp)
         ) {

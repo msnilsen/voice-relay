@@ -35,6 +35,11 @@
     <string name="notification_text">Say \"%s\" to activate</string>
     <string name="settings_title">Settings</string>
     <string name="webhook_url_label">Webhook URL</string>
+    <string name="request_format_label">Request Format</string>
+    <string name="request_format_simple">Simple JSON</string>
+    <string name="request_format_openai">OpenAI Chat</string>
+    <string name="request_format_simple_desc">Sends {"query": "...", "session_id": "..."}. Works with n8n, custom APIs, and most webhook endpoints.</string>
+    <string name="request_format_openai_desc">Sends OpenAI Chat Completions format. Compatible with OpenAI, Azure OpenAI, and similar APIs.</string>
     <string name="webhook_url_hint">http://your-server/webhook/endpoint</string>
     <string name="auth_token_label">Auth Token (optional)</string>
     <string name="auth_token_hint">Optional</string>
