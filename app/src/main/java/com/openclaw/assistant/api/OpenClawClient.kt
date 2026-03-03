@@ -72,7 +72,7 @@ class WebhookClient(
     ): JsonObject {
         return when (format) {
             RequestFormat.SIMPLE -> JsonObject().apply {
-                addProperty("query", prependContext(message, context))
+                addProperty("query", message)
                 addProperty("session_id", sessionId)
             }
             RequestFormat.OPENAI -> JsonObject().apply {
@@ -81,7 +81,7 @@ class WebhookClient(
                 val messagesArray = JsonArray()
                 val userMessage = JsonObject().apply {
                     addProperty("role", "user")
-                    addProperty("content", prependContext(message, context))
+                    addProperty("content", message)
                 }
                 messagesArray.add(userMessage)
                 add("messages", messagesArray)
@@ -99,21 +99,12 @@ class WebhookClient(
                 } catch (e: Exception) {
                     Log.w(TAG, "Invalid custom JSON template, falling back to SIMPLE", e)
                     JsonObject().apply {
-                        addProperty("query", prependContext(message, context))
+                        addProperty("query", message)
                         addProperty("session_id", sessionId)
                     }
                 }
             }
         }
-    }
-
-    private fun prependContext(message: String, context: Map<String, String>): String {
-        if (context.isEmpty()) return message
-        val parts = mutableListOf<String>()
-        context["local_time"]?.let { parts.add("Time: $it") }
-        context["stop_token"]?.let { parts.add("Stop token: $it") }
-        return if (parts.isEmpty()) message
-        else "[${parts.joinToString(" | ")}]\n\n$message"
     }
 
     companion object {
