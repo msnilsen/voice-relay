@@ -397,6 +397,8 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                                     releaseWakeLock()
                                     SessionForegroundService.stop(context)
                                     sendResumeBroadcast()
+                                    userRequestedClose = true
+                                    finish()
                                     return@collectLatest
                                 }
                                 sendToOpenClaw(result.text)
@@ -562,8 +564,13 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
             currentState.value = AssistantState.IDLE
             if (shouldEndSession) {
                 releaseWakeLock()
+                SessionForegroundService.stop(context)
+                sendResumeBroadcast()
+                userRequestedClose = true
+                finish()
+            } else {
+                SessionForegroundService.stop(context)
             }
-            SessionForegroundService.stop(context)
         }
     }
 
@@ -624,6 +631,9 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                         currentState.value = AssistantState.IDLE
                         releaseWakeLock()
                         SessionForegroundService.stop(context)
+                        sendResumeBroadcast()
+                        userRequestedClose = true
+                        finish()
                     } else if (settings.continuousMode) {
                         Log.d(TAG, "TTS complete, continuous mode ON. Starting 2nd rally startListening() in 500ms")
                         delay(500)
