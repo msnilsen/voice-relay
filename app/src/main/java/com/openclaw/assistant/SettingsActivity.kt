@@ -15,6 +15,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -249,6 +251,9 @@ fun SettingsScreen(
     var speechLanguage by rememberSaveable { mutableStateOf(settings.speechLanguage) }
     var appLanguage by rememberSaveable { mutableStateOf(settings.appLanguage) }
     var thinkingSoundEnabled by rememberSaveable { mutableStateOf(settings.thinkingSoundEnabled) }
+    var stopToken by rememberSaveable { mutableStateOf(settings.stopToken) }
+    var dismissPhrases by rememberSaveable { mutableStateOf(settings.dismissPhrases) }
+    var newDismissPhrase by rememberSaveable { mutableStateOf("") }
 
     var showAuthToken by rememberSaveable { mutableStateOf(false) }
     var showWakeWordMenu by rememberSaveable { mutableStateOf(false) }
@@ -383,6 +388,8 @@ fun SettingsScreen(
                             settings.speechLanguage = speechLanguage
                             settings.appLanguage = appLanguage
                             settings.thinkingSoundEnabled = thinkingSoundEnabled
+                            settings.stopToken = stopToken
+                            settings.dismissPhrases = dismissPhrases
                             applyAppLanguage(appLanguage)
 
                             HotwordService.stop(context)
@@ -982,6 +989,64 @@ fun SettingsScreen(
                         steps = 4,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
+
+                    // Stop token
+                    Text(stringResource(R.string.stop_token_label), style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.stop_token_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = stopToken,
+                        onValueChange = { stopToken = it },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
+
+                    // Dismiss phrases
+                    Text(stringResource(R.string.dismiss_phrases_label), style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.dismiss_phrases_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        dismissPhrases.sorted().forEach { phrase ->
+                            InputChip(
+                                selected = false,
+                                onClick = { dismissPhrases = dismissPhrases - phrase },
+                                label = { Text(phrase) },
+                                trailingIcon = {
+                                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                                }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = newDismissPhrase,
+                            onValueChange = { newDismissPhrase = it },
+                            singleLine = true,
+                            placeholder = { Text(stringResource(R.string.dismiss_phrase_add)) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = {
+                                val trimmed = newDismissPhrase.trim()
+                                if (trimmed.isNotEmpty()) {
+                                    dismissPhrases = dismissPhrases + trimmed
+                                    newDismissPhrase = ""
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.dismiss_phrase_add))
+                        }
+                    }
                 }
             }
 

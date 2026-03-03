@@ -253,18 +253,28 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         chatRepository.applicationScope.launch {
             try {
+                val ctx = mutableMapOf<String, String>()
+                ctx["local_time"] = java.time.OffsetDateTime.now().toString()
+                val token = settings.stopToken
+                if (token.isNotBlank()) ctx["stop_token"] = token
+
                 val result = apiClient.sendMessage(
                     httpUrl = httpUrl,
                     message = text,
                     sessionId = sessionId,
                     authToken = authToken,
                     agentId = effectiveAgentId,
-                    format = format
+                    format = format,
+                    context = ctx
                 )
 
                 result.fold(
                     onSuccess = { response ->
-                        val responseText = response.getResponseText() ?: "No response"
+                        val raw = response.getResponseText() ?: "No response"
+                        val stopTok = settings.stopToken
+                        val responseText = if (stopTok.isNotBlank() && raw.trimEnd().endsWith(stopTok))
+                            raw.trimEnd().removeSuffix(stopTok).trimEnd()
+                        else raw
                         chatRepository.addMessage(sessionId, responseText, isUser = false)
 
                         viewModelScope.launch {

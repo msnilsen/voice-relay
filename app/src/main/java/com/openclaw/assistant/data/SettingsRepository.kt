@@ -212,6 +212,20 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_HTTP_IGNORE_SSL_ERRORS, false)
         set(value) = prefs.edit().putBoolean(KEY_HTTP_IGNORE_SSL_ERRORS, value).apply()
 
+    // Stop token the LLM appends when the conversation is complete
+    var stopToken: String
+        get() = prefs.getString(KEY_STOP_TOKEN, DEFAULT_STOP_TOKEN) ?: DEFAULT_STOP_TOKEN
+        set(value) = prefs.edit().putString(KEY_STOP_TOKEN, value).apply()
+
+    // Dismiss phrases — user says one of these to close the session instantly
+    var dismissPhrases: Set<String>
+        get() {
+            val raw = prefs.getString(KEY_DISMISS_PHRASES, null)
+            return if (raw.isNullOrBlank()) DEFAULT_DISMISS_PHRASES
+            else raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        }
+        set(value) = prefs.edit().putString(KEY_DISMISS_PHRASES, value.joinToString(",")).apply()
+
     // Connection type used by the voice session (wakeword / long-press home)
     // Defaults to the same as connectionType so existing setups behave identically
     var wakewordConnectionType: String
@@ -274,6 +288,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_CUSTOM_JSON_TEMPLATE = "custom_json_template"
         private const val KEY_HTTP_IGNORE_SSL_ERRORS = "http_ignore_ssl_errors"
         private const val KEY_WAKEWORD_CONNECTION_TYPE = "wakeword_connection_type"
+        private const val KEY_STOP_TOKEN = "stop_token"
+        private const val KEY_DISMISS_PHRASES = "dismiss_phrases"
         private const val KEY_SPEECH_SILENCE_TIMEOUT = "speech_silence_timeout"
         private const val KEY_THINKING_SOUND_ENABLED = "thinking_sound_enabled"
         private const val KEY_SPEECH_LANGUAGE = "speech_language"
@@ -305,6 +321,8 @@ class SettingsRepository(context: Context) {
         const val REQUEST_FORMAT_OPENAI = "openai"
         const val REQUEST_FORMAT_CUSTOM = "custom"
         const val DEFAULT_CUSTOM_JSON_TEMPLATE = """{"query": "{{query}}", "session_id": "{{session_id}}"}"""
+        const val DEFAULT_STOP_TOKEN = "[END]"
+        val DEFAULT_DISMISS_PHRASES = setOf("stop", "cancel", "never mind", "goodbye", "that's all")
         
         const val GOOGLE_TTS_PACKAGE = "com.google.android.tts"
         

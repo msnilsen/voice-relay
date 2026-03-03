@@ -316,6 +316,11 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         context.sendBroadcast(intent)
     }
 
+    private fun isDismissPhrase(text: String): Boolean {
+        val normalized = text.trim().lowercase()
+        return settings.dismissPhrases.any { it.lowercase() == normalized }
+    }
+
     // Must implement ViewModelStoreOwner for Compose
     override val viewModelStore: androidx.lifecycle.ViewModelStore = androidx.lifecycle.ViewModelStore()
 
@@ -386,6 +391,14 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                                 Log.d(TAG, "SpeechResult.Result received: text='${result.text}'")
                                 hasActuallySpoken = true
                                 userQuery.value = result.text
+                                if (isDismissPhrase(result.text)) {
+                                    Log.d(TAG, "Dismiss phrase detected – closing session")
+                                    currentState.value = AssistantState.IDLE
+                                    releaseWakeLock()
+                                    SessionForegroundService.stop(context)
+                                    sendResumeBroadcast()
+                                    return@collectLatest
+                                }
                                 sendToOpenClaw(result.text)
                             }
                             is SpeechResult.Error -> {
@@ -477,6 +490,14 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         }
     }
 
+    private fun buildContext(): Map<String, String> {
+        val ctx = mutableMapOf<String, String>()
+        ctx["local_time"] = java.time.OffsetDateTime.now().toString()
+        val token = settings.stopToken
+        if (token.isNotBlank()) ctx["stop_token"] = token
+        return ctx
+    }
+
     private suspend fun sendViaHttp(message: String) {
         val agentId = settings.defaultAgentId.takeIf { it.isNotBlank() && it != "main" }
         val format = RequestFormat.fromString(settings.requestFormat)
@@ -486,7 +507,8 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
             sessionId = settings.sessionId,
             authToken = settings.authToken.takeIf { it.isNotBlank() },
             agentId = agentId,
-            format = format
+            format = format,
+            context = buildContext()
         )
 
         result.fold(
@@ -514,22 +536,33 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         )
     }
 
+    private var shouldEndSession = false
+
     private suspend fun handleResponseReceived(responseText: String) {
+        val stopToken = settings.stopToken
+        val endsWithStopToken = stopToken.isNotBlank() && responseText.trimEnd().endsWith(stopToken)
+        shouldEndSession = endsWithStopToken
+
+        val cleanedResponse = if (endsWithStopToken)
+            responseText.trimEnd().removeSuffix(stopToken).trimEnd()
+        else responseText
+
         currentSessionId?.let { sessionId ->
-            chatRepository.addMessage(sessionId, responseText, isUser = false)
+            chatRepository.addMessage(sessionId, cleanedResponse, isUser = false)
         }
 
-        if (settings.ttsEnabled) {
-            // Thinking sound continues until actual audio playback starts
-            speakResponse(responseText)
-        } else if (settings.continuousMode) {
+        if (settings.ttsEnabled && cleanedResponse.isNotBlank()) {
+            speakResponse(cleanedResponse)
+        } else if (!shouldEndSession && settings.continuousMode) {
             stopThinkingSound()
             delay(500)
             startListening()
         } else {
             stopThinkingSound()
-            // TTS disabled & continuous conversation OFF: Return to IDLE
             currentState.value = AssistantState.IDLE
+            if (shouldEndSession) {
+                releaseWakeLock()
+            }
             SessionForegroundService.stop(context)
         }
     }
@@ -586,13 +619,16 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
                 abandonAudioFocus()
 
                 if (success) {
-                    // After speech completion, if continuous conversation mode is enabled, start listening again
-                    if (settings.continuousMode) {
+                    if (shouldEndSession) {
+                        Log.d(TAG, "TTS complete, stop token detected – ending session")
+                        currentState.value = AssistantState.IDLE
+                        releaseWakeLock()
+                        SessionForegroundService.stop(context)
+                    } else if (settings.continuousMode) {
                         Log.d(TAG, "TTS complete, continuous mode ON. Starting 2nd rally startListening() in 500ms")
                         delay(500)
                         startListening()
                     } else {
-                        // If continuous conversation is OFF, end the session
                         currentState.value = AssistantState.IDLE
                         releaseWakeLock()
                         SessionForegroundService.stop(context)

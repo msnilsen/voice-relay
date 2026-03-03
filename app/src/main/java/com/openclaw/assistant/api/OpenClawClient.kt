@@ -67,11 +67,12 @@ class WebhookClient(
         message: String,
         sessionId: String,
         format: RequestFormat,
-        customTemplate: String? = null
+        customTemplate: String? = null,
+        context: Map<String, String> = emptyMap()
     ): JsonObject {
         return when (format) {
             RequestFormat.SIMPLE -> JsonObject().apply {
-                addProperty("query", message)
+                addProperty("query", prependContext(message, context))
                 addProperty("session_id", sessionId)
             }
             RequestFormat.OPENAI -> JsonObject().apply {
@@ -80,27 +81,39 @@ class WebhookClient(
                 val messagesArray = JsonArray()
                 val userMessage = JsonObject().apply {
                     addProperty("role", "user")
-                    addProperty("content", message)
+                    addProperty("content", prependContext(message, context))
                 }
                 messagesArray.add(userMessage)
                 add("messages", messagesArray)
             }
             RequestFormat.CUSTOM -> {
                 val template = customTemplate ?: DEFAULT_CUSTOM_TEMPLATE
-                val filled = template
+                var filled = template
                     .replace("{{query}}", gson.toJson(message).let { it.substring(1, it.length - 1) })
                     .replace("{{session_id}}", gson.toJson(sessionId).let { it.substring(1, it.length - 1) })
+                for ((key, value) in context) {
+                    filled = filled.replace("{{$key}}", gson.toJson(value).let { it.substring(1, it.length - 1) })
+                }
                 try {
                     gson.fromJson(filled, JsonObject::class.java)
                 } catch (e: Exception) {
                     Log.w(TAG, "Invalid custom JSON template, falling back to SIMPLE", e)
                     JsonObject().apply {
-                        addProperty("query", message)
+                        addProperty("query", prependContext(message, context))
                         addProperty("session_id", sessionId)
                     }
                 }
             }
         }
+    }
+
+    private fun prependContext(message: String, context: Map<String, String>): String {
+        if (context.isEmpty()) return message
+        val parts = mutableListOf<String>()
+        context["local_time"]?.let { parts.add("Time: $it") }
+        context["stop_token"]?.let { parts.add("Stop token: $it") }
+        return if (parts.isEmpty()) message
+        else "[${parts.joinToString(" | ")}]\n\n$message"
     }
 
     companion object {
@@ -114,7 +127,8 @@ class WebhookClient(
         sessionId: String,
         authToken: String? = null,
         agentId: String? = null,
-        format: RequestFormat = RequestFormat.SIMPLE
+        format: RequestFormat = RequestFormat.SIMPLE,
+        context: Map<String, String> = emptyMap()
     ): Result<WebhookResponse> = withContext(Dispatchers.IO) {
         if (httpUrl.isBlank()) {
             return@withContext Result.failure(
@@ -123,7 +137,7 @@ class WebhookClient(
         }
 
         try {
-            val requestBody = buildRequestBody(message, sessionId, format, customJsonTemplate)
+            val requestBody = buildRequestBody(message, sessionId, format, customJsonTemplate, context)
 
             val jsonBody = gson.toJson(requestBody)
                 .toRequestBody("application/json; charset=utf-8".toMediaType())
