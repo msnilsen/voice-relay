@@ -427,26 +427,12 @@ private fun FinalCheckStep(
         )
     }
     var testStatus by remember { mutableStateOf<TestStatus>(TestStatus.Idle) }
-    var isFinishing by remember { mutableStateOf(false) }
 
-    val finishWithHttpTest: () -> Unit = {
-        scope.launch {
-            isFinishing = true
-            if (settings.httpUrl.isNotBlank()) {
-                val testUrl = settings.getWebhookUrl()
-                val format = RequestFormat.fromString(settings.requestFormat)
-                val result = apiClient.testConnection(testUrl, settings.authToken.ifBlank { null }, format)
-                if (result.isSuccess) {
-                    settings.isVerified = true
-                } else {
-                    settings.httpUrl = ""
-                    settings.authToken = ""
-                    settings.isVerified = false
-                }
-            }
-            isFinishing = false
-            onFinish()
+    val finish: () -> Unit = {
+        if (testStatus is TestStatus.Success) {
+            settings.isVerified = true
         }
+        onFinish()
     }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -539,22 +525,24 @@ private fun FinalCheckStep(
                 ) {
                     Text(stringResource(R.string.test_connection_button), fontSize = 18.sp)
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+                TextButton(
+                    onClick = finish,
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text(stringResource(R.string.setup_guide_finish), fontSize = 16.sp)
+                }
             }
             TestStatus.Testing -> {
                 // Show nothing extra while testing
             }
             is TestStatus.Success -> {
                 Button(
-                    onClick = finishWithHttpTest,
-                    enabled = !isFinishing,
+                    onClick = finish,
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    if (isFinishing) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                    } else {
-                        Text(stringResource(R.string.setup_guide_finish), fontSize = 18.sp)
-                    }
+                    Text(stringResource(R.string.setup_guide_finish), fontSize = 18.sp)
                 }
             }
             is TestStatus.Failed -> {
@@ -570,15 +558,10 @@ private fun FinalCheckStep(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 TextButton(
-                    onClick = finishWithHttpTest,
-                    enabled = !isFinishing,
+                    onClick = finish,
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
-                    if (isFinishing) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text(stringResource(R.string.setup_guide_finish), fontSize = 16.sp)
-                    }
+                    Text(stringResource(R.string.setup_guide_finish), fontSize = 16.sp)
                 }
             }
         }
