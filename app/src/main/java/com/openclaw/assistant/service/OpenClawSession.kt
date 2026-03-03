@@ -248,29 +248,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     
     override fun onHide() {
         super.onHide()
-
-        // User explicitly pressed close — always clean up
-        if (userRequestedClose) {
-            userRequestedClose = false
-            Log.d(TAG, "onHide: user requested close, cleaning up")
-            cleanupSession()
-            return
-        }
-
-        // If a voice session is active (listening, thinking, or speaking),
-        // keep resources alive so conversation continues with screen off.
-        val state = currentState.value
-        val isVoiceActive = state == AssistantState.LISTENING ||
-                state == AssistantState.THINKING ||
-                state == AssistantState.SPEAKING ||
-                state == AssistantState.PREPARING_SPEECH ||
-                state == AssistantState.PROCESSING
-        
-        if (isVoiceActive) {
-            Log.d(TAG, "onHide: voice session active ($state), keeping resources alive")
-            return
-        }
-
+        Log.d(TAG, "onHide: cleaning up session (state=${currentState.value})")
         cleanupSession()
     }
 
