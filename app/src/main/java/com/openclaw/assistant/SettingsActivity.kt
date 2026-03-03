@@ -244,10 +244,7 @@ fun SettingsScreen(
     var continuousMode by rememberSaveable { mutableStateOf(settings.continuousMode) }
     var resumeLatestSession by rememberSaveable { mutableStateOf(settings.resumeLatestSession) }
     var wakeWordPreset by rememberSaveable { mutableStateOf(settings.wakeWordPreset) }
-    var customWakeWord by rememberSaveable { mutableStateOf(settings.customWakeWord) }
-    var wakeWordEngine by rememberSaveable { mutableStateOf(settings.wakeWordEngine) }
-    var porcupineAccessKey by rememberSaveable { mutableStateOf(settings.porcupineAccessKey) }
-    var showPorcupineKey by rememberSaveable { mutableStateOf(false) }
+    var wakeWordThreshold by rememberSaveable { mutableStateOf(settings.wakeWordThreshold) }
     var speechSilenceTimeout by rememberSaveable { mutableStateOf(settings.speechSilenceTimeout.toFloat().coerceIn(5000f, 30000f)) }
     var speechLanguage by rememberSaveable { mutableStateOf(settings.speechLanguage) }
     var appLanguage by rememberSaveable { mutableStateOf(settings.appLanguage) }
@@ -340,12 +337,11 @@ fun SettingsScreen(
         isLoadingLanguages = false
     }
 
-    // Wake word options
+    // Wake word options (openWakeWord models)
     val wakeWordOptions = listOf(
-        SettingsRepository.WAKE_WORD_JARVIS to stringResource(R.string.wake_word_jarvis),
-        SettingsRepository.WAKE_WORD_HEY_ASSISTANT to stringResource(R.string.wake_word_hey_assistant),
-        SettingsRepository.WAKE_WORD_COMPUTER to stringResource(R.string.wake_word_computer),
-        SettingsRepository.WAKE_WORD_CUSTOM to stringResource(R.string.wake_word_custom)
+        SettingsRepository.WAKE_WORD_HEY_JARVIS to stringResource(R.string.wake_word_hey_jarvis),
+        SettingsRepository.WAKE_WORD_ALEXA to stringResource(R.string.wake_word_alexa),
+        SettingsRepository.WAKE_WORD_HEY_MYCROFT to stringResource(R.string.wake_word_hey_mycroft)
     )
 
     Scaffold(
@@ -382,9 +378,7 @@ fun SettingsScreen(
                             settings.continuousMode = continuousMode
                             settings.resumeLatestSession = resumeLatestSession
                             settings.wakeWordPreset = wakeWordPreset
-                            settings.customWakeWord = customWakeWord
-                            settings.wakeWordEngine = wakeWordEngine
-                            settings.porcupineAccessKey = porcupineAccessKey
+                            settings.wakeWordThreshold = wakeWordThreshold
                             settings.speechSilenceTimeout = speechSilenceTimeout.toLong()
                             settings.speechLanguage = speechLanguage
                             settings.appLanguage = appLanguage
@@ -1011,13 +1005,19 @@ fun SettingsScreen(
                                 text = stringResource(R.string.wake_word_classic_title),
                                 style = MaterialTheme.typography.titleSmall
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.wake_word_engine_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
                             ExposedDropdownMenuBox(
                                 expanded = showWakeWordMenu,
                                 onExpandedChange = { showWakeWordMenu = it }
                             ) {
                                 OutlinedTextField(
-                                    value = wakeWordOptions.find { it.first == wakeWordPreset }?.second ?: stringResource(R.string.wake_word_jarvis),
+                                    value = wakeWordOptions.find { it.first == wakeWordPreset }?.second ?: stringResource(R.string.wake_word_hey_jarvis),
                                     onValueChange = {},
                                     readOnly = true,
                                     label = { Text(stringResource(R.string.activation_phrase)) },
@@ -1027,7 +1027,7 @@ fun SettingsScreen(
                                         .fillMaxWidth()
                                         .menuAnchor()
                                 )
-                                
+
                                 ExposedDropdownMenu(
                                     expanded = showWakeWordMenu,
                                     onDismissRequest = { showWakeWordMenu = false }
@@ -1048,32 +1048,16 @@ fun SettingsScreen(
                                     }
                                 }
                             }
-                            
-                            if (wakeWordPreset == SettingsRepository.WAKE_WORD_CUSTOM) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                OutlinedTextField(
-                                    value = customWakeWord,
-                                    onValueChange = { customWakeWord = it.lowercase() },
-                                    label = { Text(stringResource(R.string.custom_wake_word)) },
-                                    placeholder = { Text(stringResource(R.string.custom_wake_word_hint)) },
-                                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true,
-                                    supportingText = {
-                                        Text(stringResource(R.string.custom_wake_word_help), color = Color.Gray, fontSize = 12.sp)
-                                    }
-                                )
-                            }
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
 
                         Text(
-                            text = stringResource(R.string.wake_word_engine_title),
+                            text = stringResource(R.string.wake_word_sensitivity_title),
                             style = MaterialTheme.typography.titleSmall
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = stringResource(R.string.wake_word_engine_desc),
+                            text = stringResource(R.string.wake_word_sensitivity_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Gray
                         )
@@ -1081,63 +1065,22 @@ fun SettingsScreen(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            FilterChip(
-                                selected = wakeWordEngine == SettingsRepository.WAKE_WORD_ENGINE_VOSK,
-                                onClick = { wakeWordEngine = SettingsRepository.WAKE_WORD_ENGINE_VOSK },
-                                label = { Text(stringResource(R.string.engine_vosk)) },
-                                modifier = Modifier.weight(1f)
-                            )
-                            FilterChip(
-                                selected = wakeWordEngine == SettingsRepository.WAKE_WORD_ENGINE_PORCUPINE,
-                                onClick = { wakeWordEngine = SettingsRepository.WAKE_WORD_ENGINE_PORCUPINE },
-                                label = { Text(stringResource(R.string.engine_porcupine)) },
-                                modifier = Modifier.weight(1f)
-                            )
+                            Text("${stringResource(R.string.wake_word_sensitivity_label)}: ${String.format("%.2f", wakeWordThreshold)}", style = MaterialTheme.typography.bodyMedium)
                         }
-
-                        if (wakeWordEngine == SettingsRepository.WAKE_WORD_ENGINE_PORCUPINE) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            OutlinedTextField(
-                                value = porcupineAccessKey,
-                                onValueChange = { porcupineAccessKey = it.trim() },
-                                label = { Text(stringResource(R.string.porcupine_access_key)) },
-                                placeholder = { Text(stringResource(R.string.porcupine_access_key_hint)) },
-                                leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
-                                trailingIcon = {
-                                    IconButton(onClick = { showPorcupineKey = !showPorcupineKey }) {
-                                        Icon(
-                                            if (showPorcupineKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                            contentDescription = null
-                                        )
-                                    }
-                                },
-                                visualTransformation = if (showPorcupineKey)
-                                    androidx.compose.ui.text.input.VisualTransformation.None
-                                else
-                                    androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.porcupine_access_key_help),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable {
-                                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://console.picovoice.ai/"))
-                                    context.startActivity(intent)
-                                }
-                            )
-                            if (porcupineAccessKey.isBlank()) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = stringResource(R.string.porcupine_key_required),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
+                        Slider(
+                            value = wakeWordThreshold,
+                            onValueChange = { wakeWordThreshold = it },
+                            valueRange = 0.1f..0.95f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(stringResource(R.string.wake_word_more_sensitive), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                            Text(stringResource(R.string.wake_word_fewer_false), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                         }
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)

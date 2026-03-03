@@ -74,7 +74,8 @@ fun CreditsScreen(
                 "Kotlin" to "Apache License 2.0",
                 "OkHttp" to "Apache License 2.0",
                 "Gson" to "Apache License 2.0",
-                "Vosk" to "Apache License 2.0",
+                "ONNX Runtime" to "MIT License",
+                "openWakeWord" to "Apache License 2.0",
                 "Bouncy Castle" to "Bouncy Castle License"
             )
 

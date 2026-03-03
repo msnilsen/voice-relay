@@ -190,9 +190,8 @@ dependencies {
     // Encrypted SharedPreferences
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    // Vosk
-    implementation("com.alphacephei:vosk-android:0.3.75")
-    implementation("ai.picovoice:porcupine-android:3.0.3")
+    // openWakeWord (ONNX models bundled in assets/openwakeword/)
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.1")
     
     // VOICEVOX (full flavor only)
     // libvoicevox_onnxruntime.so (VoiceVox custom ORT v1.17.3) is bundled in

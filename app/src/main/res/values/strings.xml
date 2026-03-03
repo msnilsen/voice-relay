@@ -190,20 +190,20 @@
     <string name="thinking_sound">Thinking Sound</string>
     <string name="thinking_sound_desc">Play sound while AI is thinking</string>
     <string name="activation_phrase">Activation Phrase</string>
-    <string name="custom_wake_word">Custom Wake Word</string>
-    <string name="custom_wake_word_hint">e.g., hey buddy</string>
-    <string name="custom_wake_word_help">Enter 2-3 English words, lowercase</string>
     <string name="testing">Testing…</string>
     <string name="connected">Connected!</string>
     <string name="failed">Failed: %s</string>
     <string name="error">Error: %s</string>
-    
-    <!-- Wake Word Presets -->
-    <string name="wake_word_openclaw">Open Claw</string>
-    <string name="wake_word_hey_assistant">Hey Assistant</string>
-    <string name="wake_word_jarvis">Jarvis</string>
-    <string name="wake_word_computer">Computer</string>
-    <string name="wake_word_custom">Custom…</string>
+
+    <!-- Wake Word Presets (openWakeWord) -->
+    <string name="wake_word_hey_jarvis">Hey Jarvis</string>
+    <string name="wake_word_alexa">Alexa</string>
+    <string name="wake_word_hey_mycroft">Hey Mycroft</string>
+    <string name="wake_word_sensitivity_title">Sensitivity</string>
+    <string name="wake_word_sensitivity_desc">Lower threshold = more sensitive but more false activations. Higher = fewer false activations but may miss quiet speech.</string>
+    <string name="wake_word_sensitivity_label">Threshold</string>
+    <string name="wake_word_more_sensitive">More sensitive</string>
+    <string name="wake_word_fewer_false">Fewer false triggers</string>
     
 
     <!-- Permission handling -->
@@ -417,18 +417,7 @@
     <string name="wake_word_node_always">Always</string>
     <string name="wake_word_node_always_desc">Continues listening in the background (uses a persistent notification).</string>
     <string name="wake_word_classic_title">Activation Phrase</string>
-    <string name="wake_word_engine_vosk">Vosk (Local)</string>
-    <string name="wake_word_engine_title">Detection Engine</string>
-    <string name="wake_word_engine_desc">Vosk runs fully offline. Porcupine is more accurate but requires a free API key from Picovoice.</string>
-    <string name="engine_vosk">Vosk (Offline)</string>
-    <string name="engine_porcupine">Porcupine</string>
-    <string name="porcupine_access_key">Porcupine Access Key</string>
-    <string name="porcupine_access_key_hint">Paste your Picovoice access key</string>
-    <string name="porcupine_access_key_help">Get a free key at console.picovoice.ai</string>
-    <string name="porcupine_key_required">An access key is required to use Porcupine</string>
-    <string name="wake_words_label">Wake Words</string>
-    <string name="wake_words_placeholder">jarvis, hey assistant</string>
-    <string name="wake_words_help">Comma-separated words that activate the assistant (e.g. "jarvis, computer")</string>
+    <string name="wake_word_engine_desc">openWakeWord — runs fully offline with low false-positive rates. No API key required.</string>
     <string name="state_verify_fingerprint">Verify gateway TLS fingerprint…</string>
     <string name="state_failed_fingerprint">Failed: can\'t read TLS fingerprint</string>
 

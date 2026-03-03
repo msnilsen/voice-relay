@@ -53,48 +53,22 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_HOTWORD_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_HOTWORD_ENABLED, value).apply()
 
-    // Wake word selection (preset or custom)
+    // Wake word selection
     var wakeWordPreset: String
-        get() = prefs.getString(KEY_WAKE_WORD_PRESET, WAKE_WORD_JARVIS) ?: WAKE_WORD_JARVIS
+        get() = prefs.getString(KEY_WAKE_WORD_PRESET, WAKE_WORD_HEY_JARVIS) ?: WAKE_WORD_HEY_JARVIS
         set(value) = prefs.edit().putString(KEY_WAKE_WORD_PRESET, value).apply()
 
-    // Custom wake word (when preset is "custom")
-    var customWakeWord: String
-        get() = prefs.getString(KEY_CUSTOM_WAKE_WORD, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_CUSTOM_WAKE_WORD, value).apply()
+    // Wake word detection threshold (0.0 – 1.0). Lower = more sensitive = more false positives.
+    var wakeWordThreshold: Float
+        get() = prefs.getFloat(KEY_WAKE_WORD_THRESHOLD, 0.5f)
+        set(value) = prefs.edit().putFloat(KEY_WAKE_WORD_THRESHOLD, value.coerceIn(0.1f, 0.95f)).apply()
 
-    var wakeWordEngine: String
-        get() = prefs.getString(KEY_WAKE_WORD_ENGINE, WAKE_WORD_ENGINE_VOSK) ?: WAKE_WORD_ENGINE_VOSK
-        set(value) = prefs.edit().putString(KEY_WAKE_WORD_ENGINE, value).apply()
-
-    var porcupineAccessKey: String
-        get() = prefs.getString(KEY_PORCUPINE_ACCESS_KEY, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_PORCUPINE_ACCESS_KEY, value).apply()
-
-    // Get the actual wake words list for Vosk
-    fun getWakeWords(): List<String> {
-        return when (wakeWordPreset) {
-            WAKE_WORD_OPEN_CLAW -> listOf("open claw")
-            WAKE_WORD_HEY_ASSISTANT -> listOf("hey assistant")
-            WAKE_WORD_JARVIS -> listOf("jarvis")
-            WAKE_WORD_COMPUTER -> listOf("computer")
-            WAKE_WORD_CUSTOM -> {
-                val custom = customWakeWord.trim().lowercase()
-                if (custom.isNotEmpty()) listOf(custom) else listOf("open claw")
-            }
-            else -> listOf("open claw")
-        }
-    }
-
-    // Get display name for current wake word
     fun getWakeWordDisplayName(): String {
         return when (wakeWordPreset) {
-            WAKE_WORD_OPEN_CLAW -> "Open Claw"
-            WAKE_WORD_HEY_ASSISTANT -> "Hey Assistant"
-            WAKE_WORD_JARVIS -> "Jarvis"
-            WAKE_WORD_COMPUTER -> "Computer"
-            WAKE_WORD_CUSTOM -> customWakeWord.ifEmpty { "Custom" }
-            else -> "Open Claw"
+            WAKE_WORD_HEY_JARVIS -> "Hey Jarvis"
+            WAKE_WORD_ALEXA -> "Alexa"
+            WAKE_WORD_HEY_MYCROFT -> "Hey Mycroft"
+            else -> "Hey Jarvis"
         }
     }
 
@@ -285,11 +259,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_SESSION_ID = "session_id"
         private const val KEY_HOTWORD_ENABLED = "hotword_enabled"
         private const val KEY_WAKE_WORD_PRESET = "wake_word_preset"
-        private const val KEY_CUSTOM_WAKE_WORD = "custom_wake_word"
-        private const val KEY_WAKE_WORD_ENGINE = "wake_word_engine"
-        private const val KEY_PORCUPINE_ACCESS_KEY = "porcupine_access_key"
-        const val WAKE_WORD_ENGINE_VOSK = "vosk"
-        const val WAKE_WORD_ENGINE_PORCUPINE = "porcupine"
+        private const val KEY_WAKE_WORD_THRESHOLD = "wake_word_threshold"
         private const val KEY_IS_VERIFIED = "is_verified"
         private const val KEY_TTS_ENABLED = "tts_enabled"
         private const val KEY_CONTINUOUS_MODE = "continuous_mode"
@@ -323,12 +293,10 @@ class SettingsRepository(context: Context) {
         private const val KEY_VOICEVOX_STYLE_ID = "voicevox_style_id"
         private const val KEY_VOICEVOX_TERMS_ACCEPTED = "voicevox_terms_accepted"
 
-        // Wake word presets
-        const val WAKE_WORD_OPEN_CLAW = "open_claw"
-        const val WAKE_WORD_HEY_ASSISTANT = "hey_assistant"
-        const val WAKE_WORD_JARVIS = "jarvis"
-        const val WAKE_WORD_COMPUTER = "computer"
-        const val WAKE_WORD_CUSTOM = "custom"
+        // Wake word presets (openWakeWord models)
+        const val WAKE_WORD_HEY_JARVIS = "hey_jarvis"
+        const val WAKE_WORD_ALEXA = "alexa"
+        const val WAKE_WORD_HEY_MYCROFT = "hey_mycroft"
         
         const val CONNECTION_TYPE_GATEWAY = "gateway"
         const val CONNECTION_TYPE_HTTP = "http"

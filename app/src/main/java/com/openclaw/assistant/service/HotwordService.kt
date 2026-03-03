@@ -19,8 +19,7 @@ import com.openclaw.assistant.MainActivity
 import com.openclaw.assistant.R
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.openclaw.assistant.data.SettingsRepository
-import com.openclaw.assistant.wakeword.PorcupineWakeWordEngine
-import com.openclaw.assistant.wakeword.VoskWakeWordEngine
+import com.openclaw.assistant.wakeword.OpenWakeWordEngine
 import com.openclaw.assistant.wakeword.WakeWordEngine
 import kotlinx.coroutines.*
 
@@ -150,18 +149,7 @@ class HotwordService : Service() {
 
     private fun initEngine() {
         engine?.release()
-
-        engine = when (settings.wakeWordEngine) {
-            SettingsRepository.WAKE_WORD_ENGINE_PORCUPINE -> {
-                val porcupine = PorcupineWakeWordEngine(this, settings)
-                if (porcupine.isAvailable()) porcupine
-                else {
-                    Log.w(TAG, "Porcupine not available (no access key?), falling back to Vosk")
-                    VoskWakeWordEngine(this, settings)
-                }
-            }
-            else -> VoskWakeWordEngine(this, settings)
-        }
+        engine = OpenWakeWordEngine(this, settings)
 
         if (!isSessionActive) {
             engine?.start { onHotwordDetected() }
@@ -192,14 +180,9 @@ class HotwordService : Service() {
         isListeningForCommand = false
         updateNotification()
 
-        val currentEngine = engine
-        if (currentEngine is VoskWakeWordEngine) {
-            currentEngine.resumeListening()
-        } else {
-            scope.launch {
-                delay(500)
-                engine?.start { onHotwordDetected() }
-            }
+        scope.launch {
+            delay(500)
+            engine?.start { onHotwordDetected() }
         }
     }
 
