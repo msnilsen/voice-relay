@@ -191,7 +191,7 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // openWakeWord – on-device wake word detection
-    implementation("com.github.msnilsen:openwakeword-android:0.1.1")
+    implementation("com.github.msnilsen:openwakeword-android:0.1.2")
     
     // VOICEVOX (full flavor only)
     // libvoicevox_onnxruntime.so (VoiceVox custom ORT v1.17.3) is bundled in

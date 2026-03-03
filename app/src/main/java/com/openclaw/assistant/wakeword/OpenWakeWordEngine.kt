@@ -18,15 +18,15 @@ class OpenWakeWordEngine(
     override fun isAvailable(): Boolean = true
 
     override fun start(onDetected: () -> Unit) {
-        if (detector != null) return
+        if (detector == null) {
+            val builder = OpenWakeWord.Builder(context)
+                .setThreshold(settings.wakeWordThreshold)
 
-        val builder = OpenWakeWord.Builder(context)
-            .setThreshold(settings.wakeWordThreshold)
+            val model = presetToModel(settings.wakeWordPreset)
+            if (model != null) builder.setModel(model)
 
-        val model = presetToModel(settings.wakeWordPreset)
-        if (model != null) builder.setModel(model)
-
-        detector = builder.build()
+            detector = builder.build()
+        }
         detector?.start { onDetected() }
     }
 
