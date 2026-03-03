@@ -190,6 +190,9 @@
     <string name="dismiss_phrases_label">Dismiss Phrases</string>
     <string name="dismiss_phrases_desc">Say one of these to close the session instantly</string>
     <string name="dismiss_phrase_add">Add phrase</string>
+    <string name="session_timeout_label">Session Timeout</string>
+    <string name="session_timeout_desc">Reuse session if last message was within this window</string>
+    <string name="session_timeout_always_new">Always new</string>
     <string name="speech_language_system_default">System Default</string>
     <string name="speech_language_loading">Loading languages…</string>
     <string name="thinking_sound">Thinking Sound</string>

@@ -46,6 +46,41 @@ class SettingsRepository(context: Context) {
         }
         set(value) = prefs.edit().putString(KEY_SESSION_ID, value).apply()
 
+    // Timestamp of the last message sent (epoch millis)
+    var lastMessageTimestamp: Long
+        get() = prefs.getLong(KEY_LAST_MESSAGE_TIMESTAMP, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_MESSAGE_TIMESTAMP, value).apply()
+
+    // Session timeout in minutes. If more than this has elapsed since the last message,
+    // a new session ID is generated. 0 = always new session.
+    var sessionTimeoutMinutes: Int
+        get() = prefs.getInt(KEY_SESSION_TIMEOUT_MINUTES, DEFAULT_SESSION_TIMEOUT_MINUTES)
+        set(value) = prefs.edit().putInt(KEY_SESSION_TIMEOUT_MINUTES, value).apply()
+
+    /**
+     * Returns the current session ID if the last message was within the timeout window,
+     * otherwise generates a new one. Also stamps the current time.
+     */
+    fun getOrCreateSessionId(): String {
+        val now = System.currentTimeMillis()
+        val timeout = sessionTimeoutMinutes
+        val elapsed = now - lastMessageTimestamp
+        val withinWindow = timeout > 0 && lastMessageTimestamp > 0 &&
+                elapsed < timeout * 60_000L
+
+        return if (withinWindow) {
+            sessionId
+        } else {
+            generateNewSessionId().also {
+                sessionId = it
+            }
+        }
+    }
+
+    fun stampMessageTime() {
+        lastMessageTimestamp = System.currentTimeMillis()
+    }
+
 
 
     // Hotword enabled
@@ -271,6 +306,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_HTTP_URL = "webhook_url"
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_SESSION_ID = "session_id"
+        private const val KEY_LAST_MESSAGE_TIMESTAMP = "last_message_timestamp"
+        private const val KEY_SESSION_TIMEOUT_MINUTES = "session_timeout_minutes"
         private const val KEY_HOTWORD_ENABLED = "hotword_enabled"
         private const val KEY_WAKE_WORD_PRESET = "wake_word_preset"
         private const val KEY_WAKE_WORD_THRESHOLD = "wake_word_threshold"
@@ -321,6 +358,7 @@ class SettingsRepository(context: Context) {
         const val REQUEST_FORMAT_OPENAI = "openai"
         const val REQUEST_FORMAT_CUSTOM = "custom"
         const val DEFAULT_CUSTOM_JSON_TEMPLATE = """{"query": "{{query}}", "session_id": "{{session_id}}"}"""
+        const val DEFAULT_SESSION_TIMEOUT_MINUTES = 10
         const val DEFAULT_STOP_TOKEN = "[END]"
         val DEFAULT_DISMISS_PHRASES = setOf("stop", "cancel", "never mind", "goodbye", "that's all")
         

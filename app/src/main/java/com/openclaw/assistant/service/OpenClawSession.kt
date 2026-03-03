@@ -214,20 +214,27 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         // PAUSE Hotword Service to prevent microphone conflict
         sendPauseBroadcast()
         
-        // SESSION MANAGEMENT
+        // SESSION MANAGEMENT — reuse session if within the configured timeout window
         scope.launch {
             try {
-                val latestSession = if (settings.resumeLatestSession) chatRepository.getLatestSession() else null
-                if (latestSession != null) {
-                    currentSessionId = latestSession.id
-                    Log.d(TAG, "Resuming latest session: $currentSessionId")
-                } else {
-                    currentSessionId = chatRepository.createSession(title = String.format(context.getString(R.string.default_session_title_format), java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())))
-                    Log.d(TAG, "Created new session: $currentSessionId")
-                }
+                val apiSessionId = settings.getOrCreateSessionId()
+                Log.d(TAG, "API session ID: $apiSessionId (timeout=${settings.sessionTimeoutMinutes}min)")
 
-                // Store this ID in settings so ChatActivity and API calls use it
-                currentSessionId?.let { settings.sessionId = it }
+                // Find or create a matching local chat session
+                val latestSession = chatRepository.getLatestSession()
+                if (latestSession != null && latestSession.id == settings.sessionId) {
+                    currentSessionId = latestSession.id
+                    Log.d(TAG, "Resuming local session: $currentSessionId")
+                } else {
+                    currentSessionId = chatRepository.createSession(
+                        title = String.format(
+                            context.getString(R.string.default_session_title_format),
+                            java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                        )
+                    )
+                    settings.sessionId = currentSessionId!!
+                    Log.d(TAG, "Created new local session: $currentSessionId")
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to handle session", e)
                 FirebaseCrashlytics.getInstance().recordException(e)
@@ -479,6 +486,7 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     }
 
     private suspend fun sendViaHttp(message: String) {
+        settings.stampMessageTime()
         val agentId = settings.defaultAgentId.takeIf { it.isNotBlank() && it != "main" }
         val format = RequestFormat.fromString(settings.requestFormat)
         val result = apiClient.sendMessage(

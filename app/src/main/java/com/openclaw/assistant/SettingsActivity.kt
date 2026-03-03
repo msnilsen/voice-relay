@@ -248,6 +248,7 @@ fun SettingsScreen(
     var ttsSpeed by rememberSaveable { mutableStateOf(settings.ttsSpeed) }
     var continuousMode by rememberSaveable { mutableStateOf(settings.continuousMode) }
     var resumeLatestSession by rememberSaveable { mutableStateOf(settings.resumeLatestSession) }
+    var sessionTimeoutMinutes by rememberSaveable { mutableStateOf(settings.sessionTimeoutMinutes.toFloat()) }
     var wakeWordPreset by rememberSaveable { mutableStateOf(settings.wakeWordPreset) }
     var wakeWordThreshold by rememberSaveable { mutableStateOf(settings.wakeWordThreshold) }
     var speechSilenceTimeout by rememberSaveable { mutableStateOf(settings.speechSilenceTimeout.toFloat().coerceIn(5000f, 30000f)) }
@@ -385,6 +386,7 @@ fun SettingsScreen(
                             settings.voiceVoxTermsAccepted = voiceVoxTermsAccepted
                             settings.continuousMode = continuousMode
                             settings.resumeLatestSession = resumeLatestSession
+                            settings.sessionTimeoutMinutes = sessionTimeoutMinutes.toInt()
                             settings.wakeWordPreset = wakeWordPreset
                             settings.wakeWordThreshold = wakeWordThreshold
                             settings.speechSilenceTimeout = speechSilenceTimeout.toLong()
@@ -1165,17 +1167,31 @@ fun SettingsScreen(
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
 
+                        // Session timeout
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(stringResource(R.string.resume_latest_session), style = MaterialTheme.typography.bodyLarge)
-                                Text(stringResource(R.string.resume_latest_session_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                Text(stringResource(R.string.session_timeout_label), style = MaterialTheme.typography.bodyLarge)
+                                Text(stringResource(R.string.session_timeout_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                             }
-                            Switch(checked = resumeLatestSession, onCheckedChange = { resumeLatestSession = it })
+                            Text(
+                                text = if (sessionTimeoutMinutes.toInt() == 0) stringResource(R.string.session_timeout_always_new)
+                                       else "%d min".format(sessionTimeoutMinutes.toInt()),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
+
+                        Slider(
+                            value = sessionTimeoutMinutes,
+                            onValueChange = { sessionTimeoutMinutes = it },
+                            valueRange = 0f..30f,
+                            steps = 5,
+                            modifier = Modifier.fillMaxWidth()
+                        )
 
                     }
                 }

@@ -246,6 +246,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun sendViaHttp(sessionId: String, text: String) {
+        settings.stampMessageTime()
         val httpUrl = settings.getWebhookUrl()
         val authToken = settings.authToken.takeIf { it.isNotBlank() }
         val effectiveAgentId = getEffectiveAgentId()
