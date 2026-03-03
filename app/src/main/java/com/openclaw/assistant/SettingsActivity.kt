@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -44,6 +45,8 @@ import com.openclaw.assistant.api.WebhookClient
 import com.openclaw.assistant.data.SettingsRepository
 import com.openclaw.assistant.service.HotwordService
 import com.openclaw.assistant.ui.components.CollapsibleSection
+import com.openclaw.assistant.ui.components.PlaceholderHighlightTransformation
+import com.openclaw.assistant.ui.components.TemplatePlaceholderInfoDialog
 import com.openclaw.assistant.ui.theme.VoiceRelayTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.openclaw.assistant.utils.SystemInfoProvider
@@ -564,6 +567,10 @@ fun SettingsScreen(
 
                             if (currentRequestFormat == SettingsRepository.REQUEST_FORMAT_CUSTOM) {
                                 Spacer(modifier = Modifier.height(8.dp))
+                                var showPlaceholderInfo by remember { mutableStateOf(false) }
+                                if (showPlaceholderInfo) {
+                                    TemplatePlaceholderInfoDialog(onDismiss = { showPlaceholderInfo = false })
+                                }
                                 OutlinedTextField(
                                     value = currentCustomJsonTemplate,
                                     onValueChange = {
@@ -572,11 +579,19 @@ fun SettingsScreen(
                                         testResult = null
                                     },
                                     label = { Text(stringResource(R.string.custom_json_template_label)) },
+                                    trailingIcon = {
+                                        IconButton(onClick = { showPlaceholderInfo = true }) {
+                                            Icon(Icons.Default.Info, contentDescription = "Available placeholders")
+                                        }
+                                    },
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .heightIn(min = 120.dp),
                                     textStyle = MaterialTheme.typography.bodySmall.copy(
-                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                        fontFamily = FontFamily.Monospace
+                                    ),
+                                    visualTransformation = PlaceholderHighlightTransformation(
+                                        highlightColor = MaterialTheme.colorScheme.primary
                                     ),
                                     maxLines = 10
                                 )
@@ -2484,3 +2499,4 @@ fun VoiceVoxSetupDialog(
         }
     )
 }
+
