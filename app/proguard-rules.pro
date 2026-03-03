@@ -23,9 +23,7 @@
 # Tink (Security Crypto)
 -dontwarn com.google.crypto.tink.**
 
-# ONNX Runtime (used by openWakeWord)
--keep class ai.onnxruntime.** { *; }
--dontwarn ai.onnxruntime.**
+# openWakeWord library handles its own proguard rules via consumer-rules.pro
 
 # Markdown renderer (JetBrains markdown parser)
 -keep class org.intellij.markdown.** { *; }
