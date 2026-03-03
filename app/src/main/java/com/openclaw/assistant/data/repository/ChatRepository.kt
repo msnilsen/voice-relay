@@ -46,6 +46,14 @@ class ChatRepository private constructor(context: Context) {
         return chatDao.getLatestSession()
     }
 
+    suspend fun getSessionById(id: String): SessionEntity? {
+        return chatDao.getSessionById(id)
+    }
+
+    suspend fun createSessionWithId(id: String, title: String = "New Conversation") {
+        chatDao.insertSession(SessionEntity(id = id, title = title))
+    }
+
     // Messages
     fun getMessages(sessionId: String): Flow<List<MessageEntity>> {
         return chatDao.getMessagesForSession(sessionId)

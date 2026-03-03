@@ -214,26 +214,24 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         // PAUSE Hotword Service to prevent microphone conflict
         sendPauseBroadcast()
         
-        // SESSION MANAGEMENT — resolve session ID based on configured mode
+        // SESSION MANAGEMENT — resolve voice session ID based on configured mode
         scope.launch {
             try {
-                settings.startConversationSession() // no-op unless per_conversation mode
-                val apiSessionId = settings.getOrCreateSessionId()
-                Log.d(TAG, "API session ID: $apiSessionId (mode=${settings.sessionMode})")
+                val voiceId = settings.resolveVoiceSessionId()
+                Log.d(TAG, "Voice session ID: $voiceId (mode=${settings.sessionMode})")
 
-                // Find or create a matching local chat session
-                val latestSession = chatRepository.getLatestSession()
-                if (latestSession != null && latestSession.id == settings.sessionId) {
-                    currentSessionId = latestSession.id
+                // Find or create a matching local chat session for storing messages
+                val existingSession = chatRepository.getSessionById(voiceId)
+                if (existingSession != null) {
+                    currentSessionId = existingSession.id
                     Log.d(TAG, "Resuming local session: $currentSessionId")
                 } else {
-                    currentSessionId = chatRepository.createSession(
-                        title = String.format(
-                            context.getString(R.string.default_session_title_format),
-                            java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-                        )
+                    val title = String.format(
+                        context.getString(R.string.default_session_title_format),
+                        java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
                     )
-                    settings.sessionId = currentSessionId!!
+                    chatRepository.createSessionWithId(voiceId, title)
+                    currentSessionId = voiceId
                     Log.d(TAG, "Created new local session: $currentSessionId")
                 }
             } catch (e: Exception) {
@@ -487,13 +485,13 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
     }
 
     private suspend fun sendViaHttp(message: String) {
-        settings.stampMessageTime()
+        settings.stampVoiceMessageTime()
         val agentId = settings.defaultAgentId.takeIf { it.isNotBlank() && it != "main" }
         val format = RequestFormat.fromString(settings.requestFormat)
         val result = apiClient.sendMessage(
             httpUrl = settings.getWebhookUrl(),
             message = message,
-            sessionId = settings.sessionId,
+            sessionId = settings.voiceSessionId,
             authToken = settings.authToken.takeIf { it.isNotBlank() },
             agentId = agentId,
             format = format,

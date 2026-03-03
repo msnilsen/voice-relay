@@ -46,12 +46,20 @@ class SettingsRepository(context: Context) {
         }
         set(value) = prefs.edit().putString(KEY_SESSION_ID, value).apply()
 
-    // Timestamp of the last message sent (epoch millis)
-    var lastMessageTimestamp: Long
-        get() = prefs.getLong(KEY_LAST_MESSAGE_TIMESTAMP, 0L)
-        set(value) = prefs.edit().putLong(KEY_LAST_MESSAGE_TIMESTAMP, value).apply()
+    // Timestamp of the last voice message sent (epoch millis, voice-only)
+    var lastVoiceMessageTimestamp: Long
+        get() = prefs.getLong(KEY_LAST_VOICE_MESSAGE_TIMESTAMP, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_VOICE_MESSAGE_TIMESTAMP, value).apply()
 
-    // Session timeout in minutes (used only in TTL mode)
+    // The session ID used by the voice flow (independent of the chat UI's selected session)
+    var voiceSessionId: String
+        get() {
+            val existing = prefs.getString(KEY_VOICE_SESSION_ID, null)
+            return existing ?: generateNewSessionId().also { voiceSessionId = it }
+        }
+        set(value) = prefs.edit().putString(KEY_VOICE_SESSION_ID, value).apply()
+
+    // Session timeout in minutes (used only in TTL mode, voice only)
     var sessionTimeoutMinutes: Int
         get() = prefs.getInt(KEY_SESSION_TIMEOUT_MINUTES, DEFAULT_SESSION_TIMEOUT_MINUTES)
         set(value) = prefs.edit().putInt(KEY_SESSION_TIMEOUT_MINUTES, value).apply()
@@ -61,43 +69,29 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_SESSION_MODE, SESSION_MODE_TTL) ?: SESSION_MODE_TTL
         set(value) = prefs.edit().putString(KEY_SESSION_MODE, value).apply()
 
-    // Tracks whether a voice activation is in progress (for per_conversation mode)
-    var conversationSessionId: String?
-        get() = prefs.getString(KEY_CONVERSATION_SESSION_ID, null)
-        set(value) = prefs.edit().putString(KEY_CONVERSATION_SESSION_ID, value).apply()
-
     /**
-     * Resolves the session ID based on the configured mode.
-     * Call at the start of a new voice activation or chat send.
+     * Resolves the voice session ID based on the configured mode.
+     * Only used by voice activations — the chat UI uses its own local session ID.
      */
-    fun getOrCreateSessionId(): String {
+    fun resolveVoiceSessionId(): String {
         return when (sessionMode) {
-            SESSION_MODE_ALWAYS_NEW -> generateNewSessionId().also { sessionId = it }
-            SESSION_MODE_STICKY -> sessionId
-            SESSION_MODE_PER_CONVERSATION -> sessionId // caller manages via startConversationSession()
+            SESSION_MODE_ALWAYS_NEW -> generateNewSessionId().also { voiceSessionId = it }
+            SESSION_MODE_STICKY -> voiceSessionId
+            SESSION_MODE_PER_CONVERSATION -> generateNewSessionId().also { voiceSessionId = it }
             else -> { // TTL
                 val now = System.currentTimeMillis()
                 val timeout = sessionTimeoutMinutes
-                val elapsed = now - lastMessageTimestamp
-                val withinWindow = timeout > 0 && lastMessageTimestamp > 0 &&
+                val elapsed = now - lastVoiceMessageTimestamp
+                val withinWindow = timeout > 0 && lastVoiceMessageTimestamp > 0 &&
                         elapsed < timeout * 60_000L
-                if (withinWindow) sessionId
-                else generateNewSessionId().also { sessionId = it }
+                if (withinWindow) voiceSessionId
+                else generateNewSessionId().also { voiceSessionId = it }
             }
         }
     }
 
-    /** Start a new conversation session (for per_conversation mode). */
-    fun startConversationSession() {
-        if (sessionMode == SESSION_MODE_PER_CONVERSATION) {
-            val newId = generateNewSessionId()
-            sessionId = newId
-            conversationSessionId = newId
-        }
-    }
-
-    fun stampMessageTime() {
-        lastMessageTimestamp = System.currentTimeMillis()
+    fun stampVoiceMessageTime() {
+        lastVoiceMessageTimestamp = System.currentTimeMillis()
     }
 
 
@@ -325,10 +319,10 @@ class SettingsRepository(context: Context) {
         private const val KEY_HTTP_URL = "webhook_url"
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_SESSION_ID = "session_id"
-        private const val KEY_LAST_MESSAGE_TIMESTAMP = "last_message_timestamp"
+        private const val KEY_LAST_VOICE_MESSAGE_TIMESTAMP = "last_voice_message_timestamp"
+        private const val KEY_VOICE_SESSION_ID = "voice_session_id"
         private const val KEY_SESSION_TIMEOUT_MINUTES = "session_timeout_minutes"
         private const val KEY_SESSION_MODE = "session_mode"
-        private const val KEY_CONVERSATION_SESSION_ID = "conversation_session_id"
         private const val KEY_HOTWORD_ENABLED = "hotword_enabled"
         private const val KEY_WAKE_WORD_PRESET = "wake_word_preset"
         private const val KEY_WAKE_WORD_THRESHOLD = "wake_word_threshold"
