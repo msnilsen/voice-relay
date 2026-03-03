@@ -51,29 +51,48 @@ class SettingsRepository(context: Context) {
         get() = prefs.getLong(KEY_LAST_MESSAGE_TIMESTAMP, 0L)
         set(value) = prefs.edit().putLong(KEY_LAST_MESSAGE_TIMESTAMP, value).apply()
 
-    // Session timeout in minutes. If more than this has elapsed since the last message,
-    // a new session ID is generated. 0 = always new session.
+    // Session timeout in minutes (used only in TTL mode)
     var sessionTimeoutMinutes: Int
         get() = prefs.getInt(KEY_SESSION_TIMEOUT_MINUTES, DEFAULT_SESSION_TIMEOUT_MINUTES)
         set(value) = prefs.edit().putInt(KEY_SESSION_TIMEOUT_MINUTES, value).apply()
 
+    // Session mode: "always_new", "ttl", "per_conversation", "sticky"
+    var sessionMode: String
+        get() = prefs.getString(KEY_SESSION_MODE, SESSION_MODE_TTL) ?: SESSION_MODE_TTL
+        set(value) = prefs.edit().putString(KEY_SESSION_MODE, value).apply()
+
+    // Tracks whether a voice activation is in progress (for per_conversation mode)
+    var conversationSessionId: String?
+        get() = prefs.getString(KEY_CONVERSATION_SESSION_ID, null)
+        set(value) = prefs.edit().putString(KEY_CONVERSATION_SESSION_ID, value).apply()
+
     /**
-     * Returns the current session ID if the last message was within the timeout window,
-     * otherwise generates a new one. Also stamps the current time.
+     * Resolves the session ID based on the configured mode.
+     * Call at the start of a new voice activation or chat send.
      */
     fun getOrCreateSessionId(): String {
-        val now = System.currentTimeMillis()
-        val timeout = sessionTimeoutMinutes
-        val elapsed = now - lastMessageTimestamp
-        val withinWindow = timeout > 0 && lastMessageTimestamp > 0 &&
-                elapsed < timeout * 60_000L
-
-        return if (withinWindow) {
-            sessionId
-        } else {
-            generateNewSessionId().also {
-                sessionId = it
+        return when (sessionMode) {
+            SESSION_MODE_ALWAYS_NEW -> generateNewSessionId().also { sessionId = it }
+            SESSION_MODE_STICKY -> sessionId
+            SESSION_MODE_PER_CONVERSATION -> sessionId // caller manages via startConversationSession()
+            else -> { // TTL
+                val now = System.currentTimeMillis()
+                val timeout = sessionTimeoutMinutes
+                val elapsed = now - lastMessageTimestamp
+                val withinWindow = timeout > 0 && lastMessageTimestamp > 0 &&
+                        elapsed < timeout * 60_000L
+                if (withinWindow) sessionId
+                else generateNewSessionId().also { sessionId = it }
             }
+        }
+    }
+
+    /** Start a new conversation session (for per_conversation mode). */
+    fun startConversationSession() {
+        if (sessionMode == SESSION_MODE_PER_CONVERSATION) {
+            val newId = generateNewSessionId()
+            sessionId = newId
+            conversationSessionId = newId
         }
     }
 
@@ -308,6 +327,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_SESSION_ID = "session_id"
         private const val KEY_LAST_MESSAGE_TIMESTAMP = "last_message_timestamp"
         private const val KEY_SESSION_TIMEOUT_MINUTES = "session_timeout_minutes"
+        private const val KEY_SESSION_MODE = "session_mode"
+        private const val KEY_CONVERSATION_SESSION_ID = "conversation_session_id"
         private const val KEY_HOTWORD_ENABLED = "hotword_enabled"
         private const val KEY_WAKE_WORD_PRESET = "wake_word_preset"
         private const val KEY_WAKE_WORD_THRESHOLD = "wake_word_threshold"
@@ -359,6 +380,10 @@ class SettingsRepository(context: Context) {
         const val REQUEST_FORMAT_CUSTOM = "custom"
         const val DEFAULT_CUSTOM_JSON_TEMPLATE = """{"query": "{{query}}", "session_id": "{{session_id}}"}"""
         const val DEFAULT_SESSION_TIMEOUT_MINUTES = 10
+        const val SESSION_MODE_ALWAYS_NEW = "always_new"
+        const val SESSION_MODE_TTL = "ttl"
+        const val SESSION_MODE_PER_CONVERSATION = "per_conversation"
+        const val SESSION_MODE_STICKY = "sticky"
         const val DEFAULT_STOP_TOKEN = "[END]"
         val DEFAULT_DISMISS_PHRASES = setOf("stop", "cancel", "never mind", "goodbye", "that's all")
         

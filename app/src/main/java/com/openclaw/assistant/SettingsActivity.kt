@@ -248,6 +248,7 @@ fun SettingsScreen(
     var ttsSpeed by rememberSaveable { mutableStateOf(settings.ttsSpeed) }
     var continuousMode by rememberSaveable { mutableStateOf(settings.continuousMode) }
     var resumeLatestSession by rememberSaveable { mutableStateOf(settings.resumeLatestSession) }
+    var sessionMode by rememberSaveable { mutableStateOf(settings.sessionMode) }
     var sessionTimeoutMinutes by rememberSaveable { mutableStateOf(settings.sessionTimeoutMinutes.toFloat()) }
     var wakeWordPreset by rememberSaveable { mutableStateOf(settings.wakeWordPreset) }
     var wakeWordThreshold by rememberSaveable { mutableStateOf(settings.wakeWordThreshold) }
@@ -386,6 +387,7 @@ fun SettingsScreen(
                             settings.voiceVoxTermsAccepted = voiceVoxTermsAccepted
                             settings.continuousMode = continuousMode
                             settings.resumeLatestSession = resumeLatestSession
+                            settings.sessionMode = sessionMode
                             settings.sessionTimeoutMinutes = sessionTimeoutMinutes.toInt()
                             settings.wakeWordPreset = wakeWordPreset
                             settings.wakeWordThreshold = wakeWordThreshold
@@ -1167,31 +1169,72 @@ fun SettingsScreen(
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
 
-                        // Session timeout
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        // Session mode
+                        Text(stringResource(R.string.session_mode_label), style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(R.string.session_mode_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(stringResource(R.string.session_timeout_label), style = MaterialTheme.typography.bodyLarge)
-                                Text(stringResource(R.string.session_timeout_desc), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                            }
-                            Text(
-                                text = if (sessionTimeoutMinutes.toInt() == 0) stringResource(R.string.session_timeout_always_new)
-                                       else "%d min".format(sessionTimeoutMinutes.toInt()),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary
+                            FilterChip(
+                                selected = sessionMode == SettingsRepository.SESSION_MODE_TTL,
+                                onClick = { sessionMode = SettingsRepository.SESSION_MODE_TTL },
+                                label = { Text(stringResource(R.string.session_mode_ttl)) }
+                            )
+                            FilterChip(
+                                selected = sessionMode == SettingsRepository.SESSION_MODE_ALWAYS_NEW,
+                                onClick = { sessionMode = SettingsRepository.SESSION_MODE_ALWAYS_NEW },
+                                label = { Text(stringResource(R.string.session_mode_always_new)) }
+                            )
+                            FilterChip(
+                                selected = sessionMode == SettingsRepository.SESSION_MODE_PER_CONVERSATION,
+                                onClick = { sessionMode = SettingsRepository.SESSION_MODE_PER_CONVERSATION },
+                                label = { Text(stringResource(R.string.session_mode_per_conversation)) }
+                            )
+                            FilterChip(
+                                selected = sessionMode == SettingsRepository.SESSION_MODE_STICKY,
+                                onClick = { sessionMode = SettingsRepository.SESSION_MODE_STICKY },
+                                label = { Text(stringResource(R.string.session_mode_sticky)) }
                             )
                         }
 
-                        Slider(
-                            value = sessionTimeoutMinutes,
-                            onValueChange = { sessionTimeoutMinutes = it },
-                            valueRange = 0f..30f,
-                            steps = 5,
-                            modifier = Modifier.fillMaxWidth()
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = when (sessionMode) {
+                                SettingsRepository.SESSION_MODE_ALWAYS_NEW -> stringResource(R.string.session_mode_always_new_desc)
+                                SettingsRepository.SESSION_MODE_PER_CONVERSATION -> stringResource(R.string.session_mode_per_conversation_desc)
+                                SettingsRepository.SESSION_MODE_STICKY -> stringResource(R.string.session_mode_sticky_desc)
+                                else -> stringResource(R.string.session_mode_ttl_desc)
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
                         )
+
+                        if (sessionMode == SettingsRepository.SESSION_MODE_TTL) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(stringResource(R.string.session_timeout_label), style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = "%d min".format(sessionTimeoutMinutes.toInt()),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Slider(
+                                value = sessionTimeoutMinutes,
+                                onValueChange = { sessionTimeoutMinutes = it },
+                                valueRange = 1f..60f,
+                                steps = 11,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
 
                     }
                 }

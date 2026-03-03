@@ -214,11 +214,12 @@ class OpenClawSession(context: Context) : VoiceInteractionSession(context),
         // PAUSE Hotword Service to prevent microphone conflict
         sendPauseBroadcast()
         
-        // SESSION MANAGEMENT — reuse session if within the configured timeout window
+        // SESSION MANAGEMENT — resolve session ID based on configured mode
         scope.launch {
             try {
+                settings.startConversationSession() // no-op unless per_conversation mode
                 val apiSessionId = settings.getOrCreateSessionId()
-                Log.d(TAG, "API session ID: $apiSessionId (timeout=${settings.sessionTimeoutMinutes}min)")
+                Log.d(TAG, "API session ID: $apiSessionId (mode=${settings.sessionMode})")
 
                 // Find or create a matching local chat session
                 val latestSession = chatRepository.getLatestSession()
